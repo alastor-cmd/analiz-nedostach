@@ -721,6 +721,15 @@
     color: var(--critical); font-weight: 600; margin-bottom: 6px;
   }
   .recon-shortage .amt { font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--ink); }
+  .amt-badge { display: inline-block; padding: 6px 14px; border-radius: 8px; margin: 2px 8px 2px 0;
+    font-family: var(--font-mono); font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+  .amt-badge .cap { display: block; font-family: var(--font-body); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em; opacity: .75; margin-bottom: 1px; }
+  .amt-short { background: var(--critical-soft); color: var(--critical); border: 1px solid var(--critical-line); }
+  .amt-exc   { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-line); }
+  .amt-ok    { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-line); }
+  .verdict-line { margin-top: 10px; font-size: 13px; line-height: 1.6; }
+  .verdict-line b { font-weight: 700; }
   .recon-shortage p { margin: 8px 0 0; color: var(--muted); font-size: 13px; max-width: 70ch; }
 
   .recon-cause { margin-top: 38px; padding-top: 30px; border-top: 1px solid var(--line); }
@@ -1884,10 +1893,12 @@
       if (typ === "PRESENT") {
         res.counts.present++;
         lastPresent = { time: when, dateStr: m[1], timeStr: m[2] };
+        if (lastDispense && !lastDispense.present) lastDispense.present = lastPresent;
         continue;
       }
       if (typ === "RETRACT") {
         res.counts.retract++;
+        if (lastDispense) { lastDispense.retracted = true; lastDispense.retractTime = when; }
         // епізод «видача → подача → ретракт»: саме він потрібен у заключенні,
         // бо показує, що купюри виходили з касет, але клієнту не дістались
         var ep = res.episodes[res.episodes.length - 1];
@@ -2440,6 +2451,11 @@
       var trTest = trIn.filter(function (d) { return d.test; });
       tiles.push(["Видач за трасою диспенсера", trReal.length]);
       tiles.push(["Сума видач за трасою", fmtUAH(trReal.reduce(function (a, d) { return a + d.amount; }, 0))]);
+      var vs = verdictStats(trReal);
+      tiles.push(["Видано клієнту", vs.taken.length + " · " + fmtUAH(vs.takenSum)]);
+      if (vs.retracted.length) tiles.push(["Повернуто ретрактом", vs.retracted.length + " · " + fmtUAH(vs.retractedSum)]);
+      if (vs.failed.length)    tiles.push(["Збій видачі", vs.failed.length + " · " + fmtUAH(vs.failedSum)]);
+      if (vs.nopresent.length) tiles.push(["Без подачі клієнту", vs.nopresent.length + " · " + fmtUAH(vs.nopresentSum)]);
       if (traceSummary.counts.retract) tiles.push(["Ретрактів за трасою", traceSummary.counts.retract]);
       if (trTest.length) tiles.push(["Тестових видач", trTest.length]);
       if (traceSummary.rejectedNotes) tiles.push(["Забраковано купюр", traceSummary.rejectedNotes]);
@@ -2454,13 +2470,36 @@
       matchResult.matchedFailed.reduce(function (a, m) { return a + m.host.amount; }, 0) +
       matchResult.unconfirmed.reduce(function (a, m) { return a + m.host.amount; }, 0);
     var excessSum = matchResult.deviceOnly.reduce(function (a, d) { return a + d.amount; }, 0);
+    var oldV = document.getElementById('reconVerdict'); if (oldV) oldV.remove();
     if (shortageSum > 0 || excessSum > 0) {
       var parts = [];
-      if (shortageSum > 0) parts.push(fmtUAH(shortageSum) + " можливої недостачі (" + (trueHostOnly.length + matchResult.matchedFailed.length + matchResult.unconfirmed.length) + " опер.)");
-      if (excessSum > 0) parts.push(fmtUAH(excessSum) + " можливого надлишку (" + matchResult.deviceOnly.length + " опер.)");
-      els.reconShortageAmt.textContent = parts.join(" · ");
+      if (shortageSum > 0) parts.push('<span class="amt-badge amt-short"><span class="cap">Недостача · ' +
+        (trueHostOnly.length + matchResult.matchedFailed.length + matchResult.unconfirmed.length) + ' опер.</span>' +
+        esc(fmtUAH(shortageSum)) + '</span>');
+      if (excessSum > 0) parts.push('<span class="amt-badge amt-exc"><span class="cap">Надлишок · ' +
+        matchResult.deviceOnly.length + ' опер.</span>' + esc(fmtUAH(excessSum)) + '</span>');
+      els.reconShortageAmt.innerHTML = parts.join("");
+
+      // Чіткий висновок за трасою диспенсера
+      if (traceSummary) {
+        var vIn = traceSummary.dispenses.filter(function (d) { return !d.test && inPeriod(d.time, period); });
+        var v = verdictStats(vIn);
+        var vp = ['<b>За трасою диспенсера:</b> клієнту видано <b>' + esc(fmtUAH(v.takenSum)) +
+                  '</b> (' + v.taken.length + ' опер.)'];
+        if (v.retracted.length) vp.push('повернуто в банкомат ретрактом <b>' + esc(fmtUAH(v.retractedSum)) +
+          '</b> (' + v.retracted.length + ' опер.) — клієнт цих коштів не отримав');
+        if (v.failed.length) vp.push('видача завершилась збоєм на <b>' + esc(fmtUAH(v.failedSum)) +
+          '</b> (' + v.failed.length + ' опер.) — купюри могли лишитись у тракті');
+        if (v.nopresent.length) vp.push('подачу клієнту не зафіксовано для <b>' + esc(fmtUAH(v.nopresentSum)) +
+          '</b> (' + v.nopresent.length + ' опер.)');
+        els.reconShortageAmt.insertAdjacentHTML('afterend',
+          '<div class="verdict-line" id="reconVerdict">' + vp.join('; ') + '.</div>');
+      }
       els.reconShortageNote.textContent = "Недостача — сума операцій, які журнал вважає успішними, але для яких немає підтвердженої квитанції видачі в логу АТМ (RRN не знайдено, сесія прямо фіксує помилку видачі, або квитанція є, але без підтвердження CASH TAKEN). " +
-        "Надлишок — квитанції видачі в лозі АТМ, для яких немає жодної операції з таким RRN у журналі. Це орієнтовна оцінка на основі знайдених аномалій, не підтверджена сума.";
+        "Надлишок — квитанції видачі в лозі АТМ, для яких немає жодної операції з таким RRN у журналі. " +
+        (traceSummary
+          ? "Рядок нижче — не оцінка, а факт із траси диспенсера: там прямо зафіксовано подачу купюр клієнту (PRESENT) і втягування назад (RETRACT), тож видно, які кошти клієнт справді отримав."
+          : "Це орієнтовна оцінка на основі знайдених аномалій. Завантажте файли трасування диспенсера — тоді буде видно точно, чи отримав клієнт готівку.");
       els.reconShortage.style.display = "block";
     } else {
       els.reconShortage.style.display = "none";
@@ -3081,6 +3120,24 @@
   // Звірка траси з журналом операцій за часом і сумою: у трасі немає ні
   // картки, ні RRN, тому зіставляти можна лише так — і саме тому результат
   // подається як орієнтир, а не як доказ.
+  // Трасування диспенсера прямо фіксує весь шлях купюр: видача з касет,
+  // подача клієнту (PRESENT) і втягування назад (RETRACT). Цього достатньо,
+  // щоб сказати однозначно, чи дісталась готівка клієнту.
+  function dispVerdict(d) {
+    if (d.failed)    return { code: "failed",    label: "Збій видачі",           got: false };
+    if (d.retracted) return { code: "retracted", label: "Повернуто ретрактом",   got: false };
+    if (d.present)   return { code: "taken",     label: "Видано клієнту",        got: true  };
+    return { code: "nopresent", label: "Подачі клієнту не зафіксовано", got: false };
+  }
+  function verdictStats(list) {
+    var r = { taken: [], retracted: [], failed: [], nopresent: [] };
+    list.forEach(function (d) { r[dispVerdict(d).code].push(d); });
+    var sum = function (a) { return a.reduce(function (x, d) { return x + d.amount; }, 0); };
+    return { taken: r.taken, retracted: r.retracted, failed: r.failed, nopresent: r.nopresent,
+             takenSum: sum(r.taken), retractedSum: sum(r.retracted),
+             failedSum: sum(r.failed), nopresentSum: sum(r.nopresent) };
+  }
+
   function matchTraceByTime(dispenses, txns, period, windowSec) {
     var used = {}, matched = [], noHost = [];
     dispenses.forEach(function (d) {
