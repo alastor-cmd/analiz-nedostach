@@ -1,0 +1,3663 @@
+<title>Аналіз недостач і надлишків</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink: #10151c;
+    --paper: #eef1f5;
+    --surface: #ffffff;
+    --surface-2: #f4f6f9;
+    --line: #d7dee6;
+    --line-soft: #e4e9ee;
+    --muted: #5b6675;
+    --accent: #1b4b91;
+    --accent-ink: #ffffff;
+    --accent-soft: #e4ecfa;
+    --critical: #b3241a;
+    --critical-soft: #fbe7e4;
+    --critical-line: #eec3bd;
+    --warning: #8a5300;
+    --warning-soft: #fbf0dc;
+    --warning-line: #ecd8ac;
+    --info: #1c6fb0;
+    --info-soft: #e4f1fa;
+    --info-line: #c3ddf0;
+    --ok: #1c7a46;
+    --ok-soft: #e3f5ea;
+    --ok-line: #bfe3cd;
+    --shadow: 0 1px 2px rgba(16, 21, 28, 0.04), 0 8px 24px -12px rgba(16, 21, 28, 0.18);
+    --font-display: 'Archivo', 'Segoe UI', sans-serif;
+    --font-body: 'Public Sans', 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e7ecf2;
+      --paper: #0b0f14;
+      --surface: #121822;
+      --surface-2: #171f2a;
+      --line: #2a3542;
+      --line-soft: #212b36;
+      --muted: #8b98a8;
+      --accent: #7aa2ff;
+      --accent-ink: #0b1220;
+      --accent-soft: #172345;
+      --critical: #ff8177;
+      --critical-soft: #3a1a16;
+      --critical-line: #5c2b24;
+      --warning: #f3bb52;
+      --warning-soft: #382a0d;
+      --warning-line: #5a4517;
+      --info: #7dc4ff;
+      --info-soft: #12293c;
+      --info-line: #1e4560;
+      --ok: #63dd97;
+      --ok-soft: #103322;
+      --ok-line: #1c5236;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink: #e7ecf2;
+    --paper: #0b0f14;
+    --surface: #121822;
+    --surface-2: #171f2a;
+    --line: #2a3542;
+    --line-soft: #212b36;
+    --muted: #8b98a8;
+    --accent: #7aa2ff;
+    --accent-ink: #0b1220;
+    --accent-soft: #172345;
+    --critical: #ff8177;
+    --critical-soft: #3a1a16;
+    --critical-line: #5c2b24;
+    --warning: #f3bb52;
+    --warning-soft: #382a0d;
+    --warning-line: #5a4517;
+    --info: #7dc4ff;
+    --info-soft: #12293c;
+    --info-line: #1e4560;
+    --ok: #63dd97;
+    --ok-soft: #103322;
+    --ok-line: #1c5236;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: var(--accent); }
+  ::selection { background: var(--accent-soft); }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+
+  /* ---------- Topbar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 22px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .mark {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 9px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+  }
+  .brand p {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .topbar .spacer { flex: 1; }
+  .btn-reset {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .btn-reset:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Intro / uploader ---------- */
+  .intro-head { margin-bottom: 18px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+  .intro-head h2 {
+    font-family: var(--font-display);
+    font-size: 27px;
+    line-height: 1.18;
+    margin: 0 0 10px;
+    text-wrap: balance;
+    max-width: 30ch;
+  }
+  .intro-head p {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .dropzone {
+    margin-top: 22px;
+    border: 1.5px dashed var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .dropzone.drag {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .dropzone .dz-icon {
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 14px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    display: grid;
+    place-items: center;
+  }
+  .dropzone h3 {
+    font-family: var(--font-display);
+    font-size: 16px;
+    margin: 0 0 4px;
+  }
+  .dropzone p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .dropzone .fmt {
+    margin-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+
+  .intro-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .btn-primary, .btn-ghost {
+    font: inherit;
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 1px solid transparent;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .or-sep { color: var(--muted); font-size: 12.5px; }
+
+  .err-box {
+    display: none;
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--critical-soft);
+    border: 1px solid var(--critical-line);
+    color: var(--critical);
+    font-size: 13.5px;
+  }
+
+  /* ---------- Batch mode ---------- */
+  #batchSection { display: none; margin-bottom: 26px; }
+  .batch-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .batch-cdm {
+    display: none;
+    border: 1px solid var(--warning-line);
+    background: var(--warning-soft);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .batch-cdm h4 {
+    font-family: var(--font-display);
+    font-size: 14.5px;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  .batch-cdm p.lead { margin: 0 0 12px; color: var(--muted); font-size: 13px; max-width: 68ch; }
+  .cdm-group { margin-bottom: 10px; }
+  .cdm-group:last-child { margin-bottom: 0; }
+  .cdm-group .code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--warning);
+  }
+  .cdm-group .occ {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    display: block;
+    margin-top: 3px;
+  }
+  .cdm-group .occ span { margin-right: 12px; display: inline-block; }
+  .cdm-group .cdm-reason {
+    font-size: 12.5px;
+    color: var(--ink);
+    margin-top: 3px;
+  }
+
+  .batch-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .batch-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--muted);
+    border-radius: 10px;
+    padding: 11px 14px;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    width: 100%;
+  }
+  .batch-row.sev-critical { border-left-color: var(--critical); }
+  .batch-row.sev-warning { border-left-color: var(--warning); }
+  .batch-row.sev-ok { border-left-color: var(--ok); }
+  .batch-row[aria-current="true"] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .batch-row .bname {
+    font-family: var(--font-mono);
+    font-size: 12.8px;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+  .batch-row .bmeta {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .batch-row .bcounts {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .bpill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .bpill.critical { background: var(--critical-soft); color: var(--critical); }
+  .bpill.warning { background: var(--warning-soft); color: var(--warning); }
+  .bpill.info { background: var(--info-soft); color: var(--info); }
+  .bpill.ok { background: var(--ok-soft); color: var(--ok); }
+  .batch-row .barrow { color: var(--muted); font-size: 15px; }
+
+  .viewing-tag {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .viewing-tag strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Results ---------- */
+  #results { display: none; }
+
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .stat {
+    background: var(--surface);
+    padding: 13px 15px;
+  }
+  .stat .k {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .stat .v {
+    font-family: var(--font-mono);
+    font-size: 14.5px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .verdict {
+    border-radius: 14px;
+    border: 1px solid var(--critical-line);
+    background: var(--critical-soft);
+    padding: 22px 24px;
+    margin-bottom: 26px;
+    box-shadow: var(--shadow);
+  }
+  .verdict.sev-ok { border-color: var(--ok-line); background: var(--ok-soft); }
+  .verdict.sev-warning { border-color: var(--warning-line); background: var(--warning-soft); }
+  .verdict .vlabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--critical);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .verdict.sev-ok .vlabel { color: var(--ok); }
+  .verdict.sev-warning .vlabel { color: var(--warning); }
+  .verdict h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    line-height: 1.3;
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .verdict .vbody {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--ink);
+    max-width: 68ch;
+  }
+  .verdict .vbody strong { font-weight: 700; }
+
+  .timeline {
+    display: flex;
+    gap: 6px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .tl-pt {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--surface);
+    border: 1px solid var(--critical-line);
+    color: var(--ink);
+    padding: 5px 9px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tl-pt::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--critical);
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 30px 0 12px;
+    flex-wrap: wrap;
+  }
+  .section-head h4 {
+    font-family: var(--font-display);
+    font-size: 15.5px;
+    margin: 0;
+  }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .chip.c-critical .dot { background: var(--critical); }
+  .chip.c-warning .dot { background: var(--warning); }
+  .chip.c-info .dot { background: var(--info); }
+  .chip.c-all .dot { background: var(--muted); }
+
+  .findings { display: flex; flex-direction: column; gap: 10px; }
+  .finding {
+    display: grid;
+    grid-template-columns: 4px 1fr;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .finding .stripe { background: var(--muted); }
+  .finding.sev-critical .stripe { background: var(--critical); }
+  .finding.sev-warning .stripe { background: var(--warning); }
+  .finding.sev-info .stripe { background: var(--info); }
+  .finding-body { padding: 14px 16px 15px; }
+  .finding-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .sev-badge {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 5px;
+  }
+  .sev-critical .sev-badge { background: var(--critical-soft); color: var(--critical); }
+  .sev-warning .sev-badge { background: var(--warning-soft); color: var(--warning); }
+  .sev-info .sev-badge { background: var(--info-soft); color: var(--info); }
+  .finding-time {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .finding h5 {
+    font-family: var(--font-display);
+    font-size: 15px;
+    margin: 0 0 5px;
+  }
+  .finding p { margin: 0; color: var(--muted); font-size: 13.8px; max-width: 70ch; }
+  .finding-actions { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
+  .link-btn {
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .evidence {
+    display: none;
+    margin-top: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    white-space: pre-wrap;
+    color: var(--ink);
+    overflow-x: auto;
+  }
+
+  .empty-state {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 26px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+
+  details.rawlog {
+    margin-top: 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  details.rawlog > summary {
+    cursor: pointer;
+    padding: 13px 16px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  details.rawlog > summary::-webkit-details-marker { display: none; }
+  details.rawlog > summary::after {
+    content: "▾";
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  details.rawlog[open] > summary::after { transform: rotate(-180deg); }
+  .rawlog-controls {
+    padding: 0 16px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .rawlog-controls input {
+    width: 100%;
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+  }
+  .rawlog-controls input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .rawlog-body {
+    max-height: 460px;
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: 12.3px;
+    line-height: 1.65;
+    background: var(--surface-2);
+  }
+  .logline {
+    padding: 1px 16px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--ink);
+    border-left: 3px solid transparent;
+  }
+  .logline.dim { color: var(--muted); }
+  .logline.hidden { display: none; }
+  .logline.flash {
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+  }
+  .logline .ln {
+    display: inline-block;
+    width: 46px;
+    color: var(--muted);
+    opacity: 0.55;
+    user-select: none;
+  }
+
+  .footnote {
+    margin-top: 30px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 560px) {
+    .intro-head h2 { font-size: 23px; }
+    .dropzone { padding: 28px 16px; }
+  }
+
+  /* ---------- Cycle reconciliation ---------- */
+  .recon-section { margin-top: 46px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .recon-lead { margin: 0 0 18px; color: var(--muted); font-size: 13.8px; max-width: 78ch; }
+  .recon-uploads {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 720px) { .recon-uploads { grid-template-columns: 1fr; } }
+  .recon-upload .dropzone { margin-top: 0; padding: 26px 18px; }
+  .recon-upload .dropzone.filled { border-color: var(--ok-line); background: var(--ok-soft); }
+  .recon-btn-row { display: flex; justify-content: center; margin-top: 18px; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .recon-coverage {
+    display: none;
+    margin: 4px 0 22px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: var(--info-soft);
+    border: 1px solid var(--info-line);
+    color: var(--info);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .recon-shortage {
+    display: none;
+    margin: 0 0 22px;
+    border-radius: 14px;
+    border: 1px solid var(--critical-line);
+    background: var(--critical-soft);
+    padding: 20px 22px;
+  }
+  .recon-shortage .vlabel {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--critical); font-weight: 600; margin-bottom: 6px;
+  }
+  .recon-shortage .amt { font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--ink); }
+  .recon-shortage p { margin: 8px 0 0; color: var(--muted); font-size: 13px; max-width: 70ch; }
+
+  .recon-cause { margin-top: 38px; padding-top: 30px; border-top: 1px solid var(--line); }
+  .recon-cause-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .recon-cause-row label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .recon-cause-row input, .recon-cause-row select {
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 11px;
+    min-width: 150px;
+  }
+  .recon-cause-row input:focus, .recon-cause-row select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .recon-cause-row button { align-self: end; }
+  .finding.sev-ok .stripe { background: var(--ok); }
+  .sev-ok .sev-badge { background: var(--ok-soft); color: var(--ok); }
+</style>
+
+<style>
+  .recon-section { margin-top: 8px; padding-top: 0; border-top: none; }
+  .recon-section > .section-head:first-child { display: none; }
+</style>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="mark">A/T</div>
+    <div class="brand">
+      <h1>Аналіз недостач</h1>
+      <p>Журнал операцій (.xlsx) + логи АТМ (.JRN) за цикл</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn-reset" id="resetBtn" type="button">↺ Новий файл</button>
+  </div>
+
+  <div class="recon-section">
+    <div class="section-head" style="margin-top:0;">
+      <h4>Звірка за цикл інкасації</h4>
+    </div>
+    <p class="recon-lead">Виявлення надлишків і недостач. Завантажте журнал операцій з процесингу (.xlsx) і всі логи АТМ (.JRN) за цикл інкасації — сторінка зіставить кожну операцію з журналу з відповідною сесією в логах АТМ і покаже все, що могло призвести до розбіжності: операції з журналу без відповідної сесії в логах, сесії з логів, де АТМ зафіксував помилку видачі попри «успішну» операцію в журналі, і сесії АТМ без відповідної операції в журналі.</p>
+
+    <div class="recon-uploads">
+      <div class="recon-upload">
+        <div class="dropzone" id="reconXlsxDropzone" tabindex="0" role="button" aria-label="Завантажити журнал операцій">
+          <div class="dz-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M9 13h6M9 17h6M9 9h2"/></svg>
+          </div>
+          <h3>Журнал операцій (.xlsx)</h3>
+          <p>Експорт із процесингу за цикл інкасації</p>
+          <div class="fmt" id="reconXlsxStatus">Файл не обрано — натисніть, щоб обрати</div>
+        </div>
+        <input type="file" id="reconXlsxInput" accept=".xlsx" hidden />
+      </div>
+      <div class="recon-upload">
+        <div class="dropzone" id="reconLogDropzone" tabindex="0" role="button" aria-label="Завантажити логи АТМ за цикл">
+          <div class="dz-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+          </div>
+          <h3>Логи АТМ і трасування (.JRN, .TRC.XML)</h3>
+          <p>Журнали банкомата та, за наявності, логи трасування диспенсера — тип файлу визначається автоматично</p>
+          <div class="fmt" id="reconLogStatus">Файли не обрано — натисніть, щоб обрати</div>
+        </div>
+        <input type="file" id="reconLogInput" accept=".jrn,.log,.txt,.xml,.JRN,.LOG,.TXT,.XML" multiple hidden />
+      </div>
+    </div>
+
+    <div class="recon-btn-row">
+      <button class="btn-primary" id="reconRunBtn" type="button" disabled>Звірити</button>
+    </div>
+
+    <div class="err-box" id="reconErrBox"></div>
+
+    <div class="recon-coverage" id="reconCoverage"></div>
+
+    <div class="recon-shortage" id="reconShortage">
+      <div class="vlabel">Орієнтовна сума аномалій циклу</div>
+      <div class="amt" id="reconShortageAmt"></div>
+      <p id="reconShortageNote"></p>
+    </div>
+
+    <div id="reconStatsWrap" style="display:none;">
+      <div class="stats-bar" id="reconStatsBar"></div>
+    </div>
+
+    <div class="section-head" id="reconFindingsHead" style="display:none;">
+      <h4>Аномалії <span id="reconFindingsCount" style="color:var(--muted); font-weight:400;"></span></h4>
+    </div>
+    <div class="findings" id="reconFindingsList"></div>
+    <div id="reconEventsBlock"></div>
+
+    <div class="recon-cause" id="reconCauseSection" style="display:none;">
+      <div class="section-head" style="margin-top:0;">
+        <h4>Пошук причини конкретної недостачі/надлишку</h4>
+      </div>
+      <p class="recon-lead">Введіть суму розбіжності, виявлену під час перерахунку готівки в банкоматі, — інструмент спробує знайти одну операцію чи комбінацію вже виявлених аномалій циклу, що в сумі дають цю суму, і покаже поруч технічні події з логів (обрив звʼязку, позаштатне вимкнення, майже порожня касета, позапланове відкриття сейфа), які могли до цього призвести.</p>
+      <div class="recon-cause-row">
+        <label>Тип розбіжності
+          <select id="reconCauseDir">
+            <option value="shortage">Недостача (готівки менше, ніж очікувалось)</option>
+            <option value="excess">Надлишок (готівки більше, ніж очікувалось)</option>
+          </select>
+        </label>
+        <label>Сума, грн
+          <input type="number" id="reconCauseAmount" min="0" step="0.01" placeholder="напр. 10000" />
+        </label>
+        <label>Допуск, ± грн
+          <input type="number" id="reconCauseTol" min="0" step="0.01" value="1" />
+        </label>
+        <button class="btn-primary" id="reconCauseBtn" type="button">Знайти можливі причини</button>
+      </div>
+      <div id="reconCauseResult"></div>
+    </div>
+
+    <div class="recon-cause" id="reconExportSection">
+      <div class="section-head" style="margin-top:0;">
+        <h4>Заключення за розглядом</h4>
+      </div>
+      <p class="recon-lead">Формує документ Word із результатами розбору: лічильники модуля на момент розвантаження, епізоди з ретрактом (фрагменти траси й журналу поруч), зафіксовані збої та висновок. Суму розбіжності та її тип бере з полів пошуку причини вище, якщо вони заповнені.</p>
+      <div class="recon-btn-row" style="justify-content:flex-start;">
+        <button class="btn-primary" id="reconExportBtn" type="button" disabled>Вивантажити заключення (.docx)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="recon-section" id="traceSection">
+    <div class="section-head" style="margin-top:0;">
+      <h4>Аналіз логів трасування диспенсера</h4>
+    </div>
+    <p class="recon-lead">Окремий розбір файлів трасування (CCDM Trace, *.TRC.XML) — без журналу процесингу й без логів банкомата. Траса йде від самого диспенсера, тому показує фізичний рух купюр: скільки й з якої касети витягнуто, що подано клієнту, що втягнуто назад чи відбраковано, які коди стану видавав пристрій. Сторінка сама знаходить моменти поповнення касет, зводить баланс кожної касети між поповненнями й показує, скільки купюр вибуло з касет понад видане клієнтам.</p>
+
+    <div class="recon-uploads">
+      <div class="recon-upload">
+        <div class="dropzone" id="traceDropzone" tabindex="0" role="button" aria-label="Завантажити логи трасування">
+          <div class="dz-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+          </div>
+          <h3>Логи трасування диспенсера (.TRC.XML)</h3>
+          <p>Один або кілька денних файлів — перетягніть або натисніть, щоб обрати</p>
+          <div class="fmt" id="traceStatus">Файли не обрано</div>
+        </div>
+        <input type="file" id="traceInput" accept=".xml,.XML,.trc,.TRC" multiple hidden />
+      </div>
+    </div>
+
+    <div class="recon-btn-row">
+      <button class="btn-primary" id="traceRunBtn" type="button" disabled>Проаналізувати трасування</button>
+    </div>
+
+    <div class="err-box" id="traceErrBox"></div>
+    <div class="recon-coverage" id="traceOverview"></div>
+    <div id="traceStatsWrap" style="display:none;">
+      <div class="stats-bar" id="traceStatsBar"></div>
+    </div>
+    <div id="traceBalance"></div>
+    <div id="traceEpisodes"></div>
+    <div id="traceEventsBlock"></div>
+    <div class="recon-btn-row" id="traceExportRow" style="justify-content:flex-start; display:none;">
+      <button class="btn-primary" id="traceExportBtn" type="button">Вивантажити заключення (.docx)</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+
+  // ---------------------------------------------------------------
+  // Decoding
+  // ---------------------------------------------------------------
+  function decodeBytes(bytes) {
+    var utf8 = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+    if (utf8.indexOf("\uFFFD") === -1) return { text: utf8, encoding: "UTF-8" };
+    try {
+      return { text: new TextDecoder("windows-1251").decode(bytes), encoding: "Windows-1251 (CP1251)" };
+    } catch (e) {
+      return { text: utf8, encoding: "UTF-8 (з нерозпізнаними символами)" };
+    }
+  }
+
+  function b64ToBytes(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  // ---------------------------------------------------------------
+  // Parsing helpers
+  // ---------------------------------------------------------------
+  function detectBaseDate(text, filename) {
+    if (filename) {
+      var m = filename.match(/(20\d{2})(\d{2})(\d{2})/);
+      if (m && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31) {
+        return m[1] + "-" + m[2] + "-" + m[3];
+      }
+    }
+    var m2 = text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    if (m2) return m2[3] + "-" + m2[2] + "-" + m2[1];
+    return null;
+  }
+
+  function diffMinutes(t1, t2) {
+    var a = t1.split(":").map(Number), b = t2.split(":").map(Number);
+    var s1 = a[0] * 3600 + a[1] * 60 + a[2];
+    var s2 = b[0] * 3600 + b[1] * 60 + b[2];
+    var d = s2 - s1;
+    if (d < 0) d += 24 * 3600;
+    return Math.round(d / 60);
+  }
+
+  function formatDuration(mins) {
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (h > 0) return h + " год " + m + " хв";
+    return m + " хв";
+  }
+
+  // ---------------------------------------------------------------
+  // CDM (касетний диспенсер) — таблиця кодів помилок, перекладена з
+  // офіційної документації виробника Diebold Nixdorf / Wincor Nixdorf
+  // "CMD-V4 Basic Error Codes" (документ надано користувачем, файл
+  // «СКОД»). Формат журналу: CDM ERROR: <клас> <код> <резерв>.
+  // Для стандартних кодів клас = 0000001D, а самé номер помилки — це
+  // останні 2 цифри поля <код> (наприклад 20001818 -> код 18).
+  // ---------------------------------------------------------------
+  var CDM_DISPENSER_CODES = {
+    1: { reason: "Несправність програмного забезпечення — немає відповіді від ПЗ CDM.",
+      measure: "Вимкніть живлення диспенсера на 5–10 хв, потім увімкніть знову. Якщо не допомогло — оновіть прошивку; якщо помилка лишається й після оновлення — замініть контролер CMD." },
+    5: { reason: "Проблема зв'язку з чіп-карткою.",
+      measure: "Перевірте всі кабелі CMD, перезапустіть CMD; у крайньому разі замініть контролер чіп-картки." },
+    6: { reason: "Проблема зв'язку з чіп-карткою.",
+      measure: "Перевірте всі кабелі CMD, перезапустіть CMD; у крайньому разі замініть контролер чіп-картки." },
+    8: { reason: "Проблема зв'язку з EEPROM стекера.",
+      measure: "Перевірте кабель EEPROM від роз'єму, виконайте скидання контролера (CL); у крайньому разі замініть EEPROM." },
+    9: { reason: "Запобіжний вимикач-замок відкритий — диспенсер вставлений не повністю.",
+      measure: "Вставте диспенсер належним чином, перевірте фіксувальну ручку/вимикач, переконайтеся, що диспенсер у позиції видачі." },
+    10: { reason: "Несправна електроніка CMD; батарея розряджена або джампер батареї не під'єднаний.",
+      measure: "Вимкніть живлення диспенсера на 5–10 хв, увімкніть знову; якщо повторюється — замініть батарею контролера, потім, за потреби, сам контролер CMD." },
+    11: { reason: "Відсутня прошивка в контролері CMD.",
+      measure: "Перезапустіть банкомат і дочекайтесь завантаження прошивки. Перевірте наявність файлу прошивки на диску; за відсутності — скопіюйте з дистрибутивного носія, перезапустіть банкомат." },
+    12: { reason: "Запобіжний замок відкритий (CMD вставлено не повністю).",
+      measure: "Вставте диспенсер належним чином — перевірте задній і лівий бічний вимикачі." },
+    13: { reason: "Досягнуто максимальної кількості ретрактів — клієнт не забрав готівку із затискача, або проблема шторки; транзакцію відкликано.",
+      measure: "Вийміть готівку клієнта з блоку ретракту через операторську функцію, скиньте пристрій і очистіть лічильник ретрактів (меню постачальника → Clear Retracts)." },
+    14: { reason: "Відсутня мінімальна конфігурація — потрібна щонайменше одна касета реджект/ретракт і одна касета видачі.",
+      measure: "Вставте касети й залогуйте їх через операторську функцію (меню постачальника → Logon Cassette)." },
+    15: { reason: "Плата розподілу касет некоректно закодована, не вставлена або несправна.",
+      measure: "Перевірте кабель до плати розподілу; скиньте (CL) контролер CMD; якщо не допомагає — замініть плату." },
+    16: { reason: "Некоректне кодування вихідного транспорту.",
+      measure: "Перевірте кабель і датчик вихідного транспорту та кабель затискача; скиньте (CL) контролер; за потреби замініть вихідний лоток." },
+    17: { reason: "Несправний ремінний привід затискача (M3) або затискач заклинило.",
+      measure: "Перевірте двигун і шестерні затискача, датчик лотка вихідного транспорту, стан касети реджекту зсередини." },
+    18: { reason: "Затор банкнот під час видачі — готівка недоступна клієнту.",
+      measure: "Перевірте весь тракт купюр від касет до приймального лотка, проведіть повне сервісне обслуговування диспенсера (VSAT), перевірте ролики й шестерні у зоні датчика SP. Якщо повторюється — перевірте вільний хід внутрішньої шестерні касет, скиньте контролер (CL) і повторіть тест." },
+    19: { reason: "Затискач/захват несправний або заблокований.",
+      measure: "Перевірте кабель затискача та затор банкнот у вихідному транспорті. Усуньте затор, перезапустіть CMD; за потреби замініть стекер або кабель затискача." },
+    20: { reason: "Несправний/заблокований перемикач одиночного реджекту (MA2/1, MA2/2, SM1) — можливо, з касети береться більш ніж одна купюра за раз.",
+      measure: "Заберіть готівку з одиночного реджекту, перевірте пружину під цією позицією. Запустіть тестову функцію 2 (механічний тест); якщо магніт MA2 не рухається — замініть стекер/вихідний транспорт або контролер." },
+    21: { reason: "Несправна вимірювальна станція (DDU).",
+      measure: "Перевірте затор банкнот у зоні вимірювальної станції, кабельні з'єднання, очистіть контакти MS; скиньте контролер (CL); за потреби замініть MS." },
+    22: { reason: "Несправний підсилювач фотодатчика або невдала ініціалізація вимірювальної станції (MS).",
+      measure: "Потрібна заміна вимірювальної станції (MS) — часта причина: велике навантаження транзакціями або слабке живлення." },
+    23: { reason: "Несправний/заблокований диск маршрутизації (SM2/SM3); несправний перемикач кола.",
+      measure: "Перевірте шестерні, люфт і вільний хід двигуна диска маршрутизації, очистіть; переконайтесь, що обидва диски в однаковому положенні. Запустіть тестову функцію 2; якщо повторюється — скиньте контролер (CL), потім замініть стекер." },
+    24: { reason: "Несправний/заблокований привід реджект/ретракт (MA6).",
+      measure: "Вставте касету реджект/ретракт заново, перевірте рух приводу MA6; очистіть і відрегулюйте зону датчика реджект/ретракту (DPS4, DPS5, DPS6, HS3)." },
+    25: { reason: "Несправний привід видачі (DCM1); можливий затор готівки.",
+      measure: "Перевірте весь тракт видачі, проведіть повне сервісне обслуговування диспенсера (VSAT); якщо повторюється — скиньте контролер (CL), потім замініть стекер." },
+    26: { reason: "Несправний/заблокований привід коліс стекера (SM3).",
+      measure: "Перевірте колеса стекера й головний двигун, зону приймального лотка на застряглі банкноти/обрізки. Запустіть тестову функцію 2; якщо повторюється — скиньте контролер (CL), потім замініть стекер або двигун." },
+    28: { reason: "Несправність шторки; проблема фотодатчика — забруднення або зміщення позиції (PS26, PS27).",
+      measure: "Проведіть повне обслуговування шторки: очистіть призми навпроти датчика шторки, скиньте й протестуйте контролер CMD; якщо не допомагає — замініть шторку." },
+    29: { reason: "Фотодатчик видачі перекритий (ознака спроби маніпуляції); проблема шторки, фотодатчик забруднений/зміщений (PS26, PS27).",
+      measure: "Те саме повне обслуговування шторки, що й для коду 28." },
+    31: { reason: "Забагато проблем під час видачі з касети №1.", measure: "Вийміть касету 1, перевірте вільний хід внутрішньої шестерні й правильність укладання банкнот; проведіть VSAT відповідного модуля видачі (шестерні, датчики SP, муфта двигуна)." },
+    32: { reason: "Забагато проблем під час видачі з касети №2.", measure: "Та сама процедура, що й для коду 31, для касети 2." },
+    33: { reason: "Забагато проблем під час видачі з касети №3.", measure: "Та сама процедура, що й для коду 31, для касети 3." },
+    34: { reason: "Забагато проблем під час видачі з касети №4.", measure: "Та сама процедура, що й для коду 31, для касети 4." },
+    41: { reason: "Готівку не вдалося видати, або неправильний тиск на банкноти у щойно вставленій касеті №1.",
+      measure: "Вийміть касету 1, перевірте вставлені банкноти (рівність укладання, пом'яті/вигнуті купюри, злипання), перевірте зону видачі модуля; проведіть VSAT відповідного модуля." },
+    42: { reason: "Готівку не вдалося видати, або неправильний тиск на банкноти у щойно вставленій касеті №2.", measure: "Та сама процедура, що й для коду 41, для касети 2." },
+    43: { reason: "Готівку не вдалося видати, або неправильний тиск на банкноти у щойно вставленій касеті №3.", measure: "Та сама процедура, що й для коду 41, для касети 3." },
+    44: { reason: "Готівку не вдалося видати, або неправильний тиск на банкноти у щойно вставленій касеті №4.", measure: "Та сама процедура, що й для коду 41, для касети 4." },
+    51: { reason: "Забагато бракованих банкнот з касети №1 (подвійні, надто широкі/вузькі купюри).",
+      measure: "Перевірте, чи вставлений правильний тип банкнот і чи немає злиплих купюр; за повторення — перерахуйте еталонні значення номіналу або перевірте/замініть вузол модуля видачі." },
+    52: { reason: "Забагато бракованих банкнот з касети №2.", measure: "Та сама процедура, що й для коду 51, для касети 2." },
+    53: { reason: "Забагато бракованих банкнот з касети №3.", measure: "Та сама процедура, що й для коду 51, для касети 3." },
+    54: { reason: "Забагато бракованих банкнот з касети №4.", measure: "Та сама процедура, що й для коду 51, для касети 4." },
+    61: { reason: "Касета №1 несправна — не пройшла ініціалізацію (помилка запису EEPROM касети).",
+      measure: "Перевірте внутрішній кабель касети, датчик тиску, з'єднання конекторів; якщо повторюється з іншою касетою в цьому модулі — замініть касету." },
+    62: { reason: "Касета №2 несправна — не пройшла ініціалізацію (помилка запису EEPROM касети).", measure: "Та сама процедура, що й для коду 61, для касети 2." },
+    63: { reason: "Касета №3 несправна — не пройшла ініціалізацію (помилка запису EEPROM касети).", measure: "Та сама процедура, що й для коду 61, для касети 3." },
+    64: { reason: "Касета №4 несправна — не пройшла ініціалізацію (помилка запису EEPROM касети).", measure: "Та сама процедура, що й для коду 61, для касети 4." },
+    70: { reason: "Вимірювальна станція товщини банкнот (DDU/MS) не готова.",
+      measure: "Перевірте затор банкнот у зоні вимірювальної станції; перевірте готівку на потовщення в касеті." },
+    71: { reason: "Датчик тиску видачі (PSD 1) забруднений або несправний, касета №1.",
+      measure: "Очистіть фотодатчик тиску (PSD 1); скиньте контролер (01), за потреби скиньте CMOS; якщо повторюється — замініть плату розподілу." },
+    72: { reason: "Датчик тиску видачі (PSD 2) забруднений або несправний, касета №2.", measure: "Та сама процедура, що й для коду 71, для касети 2." },
+    73: { reason: "Датчик тиску видачі (PSD 3) забруднений або несправний, касета №3.", measure: "Та сама процедура, що й для коду 71, для касети 3." },
+    74: { reason: "Датчик тиску видачі (PSD 4) забруднений або несправний, касета №4.", measure: "Та сама процедура, що й для коду 71, для касети 4." },
+    81: { reason: "Датчики порожньої касети (фото + тиску) забруднені, касета №1.",
+      measure: "Очистіть фотодатчик порожньої касети (PSE 1) і відповідну призму; скиньте/CL контролер; якщо повторюється — замініть плату розподілу." },
+    82: { reason: "Датчики порожньої касети забруднені, касета №2.", measure: "Та сама процедура, що й для коду 81, для касети 2." },
+    83: { reason: "Датчики порожньої касети забруднені, касета №3.", measure: "Та сама процедура, що й для коду 81, для касети 3." },
+    84: { reason: "Датчики порожньої касети забруднені, касета №4.", measure: "Та сама процедура, що й для коду 81, для касети 4." },
+    90: { reason: "Забруднений фотодатчик PS1 (між колесом стекера й одиночним реджектом).", measure: "Зверніться до сервісу для очищення/заміни датчика та призми." },
+    91: { reason: "Забруднений фотодатчик моніторингу касет (PS18); проблема шторки — датчики PS26, PS27.",
+      measure: "Очистіть зону датчика під головним колесом стекера; проведіть повне обслуговування шторки; за потреби — заміна шторки." },
+    93: { reason: "Несправність шторки (забруднення/зміщення фотодатчика), порожня касета одиночного реджекту, датчик PS2.",
+      measure: "Те саме повне обслуговування шторки, що й для кодів 28/29/91." },
+    95: { reason: "Несправність шторки, пов'язана з датчиком PS27 (той самий формат помилки, що й 91/93).",
+      measure: "Обслуговування шторки за тією ж процедурою." }
+  };
+
+  // Додаткові діагностичні коди шторки/затискача — клас 0000643A / 00006434,
+  // ключ — повний рядок «клас поле2 поле3» з журналу.
+  var CDM_EXTRA_CODES = {
+    "0000643A 00000000 0000FFF2": { reason: "Затискний транспорт несправний/заблокований — проблема шторки.", measure: "Повне обслуговування шторки та затискача (див. коди 19, 28, 29)." },
+    "00006434 00000000 00000020": { reason: "Шторка несправна.", measure: "Повне обслуговування шторки." },
+    "00006434 00000048 00000000": { reason: "Проблема шторки та затискача одночасно.", measure: "Повне обслуговування шторки й затискача." },
+    "00006434 00000004 00000000": { reason: "Проблема шторки та затискача (варіант коду).", measure: "Повне обслуговування шторки й затискача." },
+    "00006434 0000004D 00000000": { reason: "Помилка відповідає кодам диспенсера 17 або 19.", measure: "Див. заходи для коду 17 / 19 вище." },
+    "0000643A 00000000 0000FEC3": { reason: "Немає документа/банкноти в зоні шторки; проблема шторки.", measure: "Повне обслуговування шторки." },
+    "0000643A 00000000 0000FEC5": { reason: "Шторка закрита, хоча мала відкритися.", measure: "Повне обслуговування шторки, перевірка приводу." },
+    "0000643A 00000000 0000FEC6": { reason: "Шторка відкрита, хоча мала закритися.", measure: "Повне обслуговування шторки, перевірка приводу." },
+    "0000643A 00000000 0000FEC7": { reason: "Шторка не відкривається.", measure: "Повне обслуговування шторки, перевірка приводу." },
+    "0000643A 00000000 00000003": { reason: "Показано «сейф відкрито», хоча двері сейфа зачинені.", measure: "Перевірте контактну групу дверей сейфа й кабель датчика." }
+  };
+
+  // Перше поле рядка «CDM ERROR: <клас> <код> <резерв>» — це клас, тобто
+  // підсистема, яка повідомила помилку. Клас потрібен, щоб навіть незнайомий
+  // код не залишався без пояснення, до якого вузла він стосується.
+  var CDM_CLASS_LABELS = {
+    "0000001D": "диспенсер CMD (базові коди помилок)",
+    "0000643A": "шторка / затискний транспорт (розширений статус)",
+    "00006434": "шторка / затискний транспорт"
+  };
+
+  // Коди диспенсера згруповані в родини по номеру касети: 31–34 — «забагато
+  // проблем під час видачі з касети 1…4», 41–44 — «не вдалося видати», і так
+  // далі. Якщо в банкоматі більше ніж чотири касети, зустрічаються коди тієї ж
+  // родини з більшим номером (35, 45, 55…). Такі коди позначаємо як
+  // припущення за шаблоном родини, а не як цитату з документації.
+  var CDM_CODE_FAMILIES = [
+    { base: 31, span: 6, text: "забагато проблем під час видачі з касети",
+      measure: "Вийміть касету, перевірте вільний хід внутрішньої шестерні й правильність укладання банкнот; проведіть VSAT відповідного модуля видачі." },
+    { base: 41, span: 6, text: "готівку не вдалося видати або неправильний тиск на банкноти в касеті",
+      measure: "Вийміть касету, перевірте банкноти (рівність укладання, пом'яті/злиплі купюри), перевірте зону видачі модуля." },
+    { base: 51, span: 6, text: "забагато бракованих банкнот з касети",
+      measure: "Перевірте тип і стан банкнот; за повторення — перерахуйте еталонні значення номіналу або замініть вузол модуля видачі." },
+    { base: 61, span: 6, text: "касета не пройшла ініціалізацію (помилка EEPROM касети), касета",
+      measure: "Перевірте внутрішній кабель касети, датчик тиску та конектори; за повторення з іншою касетою в цьому модулі — замініть касету." },
+    { base: 71, span: 6, text: "датчик тиску видачі (PSD) забруднений або несправний, касета",
+      measure: "Очистіть фотодатчик тиску, скиньте контролер; за повторення — замініть плату розподілу." },
+    { base: 81, span: 6, text: "датчики порожньої касети забруднені, касета",
+      measure: "Очистіть фотодатчик порожньої касети та призму, скиньте контролер; за повторення — замініть плату розподілу." }
+  ];
+  function inferCdmFamily(num) {
+    for (var i = 0; i < CDM_CODE_FAMILIES.length; i++) {
+      var f = CDM_CODE_FAMILIES[i];
+      if (num > f.base && num < f.base + f.span) {
+        return {
+          reason: "Код " + num + " не описаний у перекладеній таблиці, але потрапляє в родину кодів «" +
+            f.text + "» — імовірно, стосується касети №" + (num - f.base + 1) + ". Формулювання — припущення за шаблоном сусідніх кодів, звірте з документацією виробника.",
+          measure: f.measure
+        };
+      }
+    }
+    return null;
+  }
+  // Повертає розшифровку завжди, коли рядок узагалі схожий на код CDM:
+  // невідомий код краще показати з поміткою «немає в таблиці», ніж мовчки
+  // проковтнути — інакше збійна операція виглядає як помилка без причини.
+  function decodeCdmCode(fields) {
+    if (!fields || !fields.length) return null;
+    var f0 = (fields[0] || "").toUpperCase();
+    var f1 = (fields[1] || "").toUpperCase();
+    var f2 = (fields[2] || "").toUpperCase();
+    var raw = [f0, f1, f2].filter(Boolean).join(" ");
+    var cls = CDM_CLASS_LABELS[f0];
+    if (f0 === "0000001D") {
+      var num = parseInt(f1.slice(-2), 10);
+      if (!isNaN(num) && CDM_DISPENSER_CODES[num]) {
+        return { key: String(num), label: "Код помилки " + num, info: CDM_DISPENSER_CODES[num], known: true };
+      }
+      var fam = !isNaN(num) ? inferCdmFamily(num) : null;
+      if (fam) return { key: String(num), label: "Код помилки " + num, info: fam, inferred: true };
+      return {
+        key: String(isNaN(num) ? raw : num), label: "Код помилки " + (isNaN(num) ? raw : num), unknown: true,
+        info: {
+          reason: "Помилка диспенсера CMD" + (isNaN(num) ? "" : " з кодом " + num) + " — цього коду немає в перекладеній таблиці CMD-V4 (повний рядок журналу: " + raw + ").",
+          measure: "Зафіксуйте час і повний код, звіртесь із документацією виробника на CMD-V4 і перевірте, чи не повторюється цей код у сусідніх днях циклу."
+        }
+      };
+    }
+    if (f0 === "0000643A" || f0 === "00006434") {
+      var key = f0 + " " + f1 + " " + f2;
+      if (CDM_EXTRA_CODES[key]) return { key: key, label: "Код " + key, info: CDM_EXTRA_CODES[key], known: true };
+      return {
+        key: key, label: "Код " + key, unknown: true,
+        info: {
+          reason: "Помилка вузла: " + cls + ". Точної комбінації полів (" + key + ") немає в перекладеній таблиці.",
+          measure: "Проведіть повне обслуговування шторки й затискача (див. коди 17, 19, 28, 29) і звіртесь із документацією виробника за повним кодом."
+        }
+      };
+    }
+    return {
+      key: raw, label: "Код " + raw, unknown: true,
+      info: {
+        reason: "Клас помилки " + f0 + " не належить до відомих класів диспенсера (0000001D) чи шторки (0000643A / 00006434) — підсистему за цим рядком визначити не вдалося.",
+        measure: "Зафіксуйте повний рядок журналу (" + raw + ") і передайте сервісній службі: без документації виробника на цей клас код розшифрувати не можна."
+      }
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // Cycle reconciliation: minimal in-browser .xlsx reader (ZIP central
+  // directory walk + regex-based sheet XML parsing; no external library
+  // — inflate uses the browser's native DecompressionStream, so nothing
+  // is fetched from a CDN). Reads the specific "Журнал операцій АТМ"
+  // export format (inline string / date / numeric cell types, no
+  // sharedStrings.xml needed) produced by the processing host.
+  // ---------------------------------------------------------------
+  function readZipEntries(view) {
+    var eocdOffset = -1;
+    for (var i = view.byteLength - 22; i >= 0; i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+    }
+    if (eocdOffset === -1) throw new Error("не вдалося розпізнати ZIP-структуру xlsx");
+    var entryCount = view.getUint16(eocdOffset + 10, true);
+    var cdOffset = view.getUint32(eocdOffset + 16, true);
+    var entries = {};
+    var p = cdOffset;
+    var dec = new TextDecoder("utf-8");
+    for (var e = 0; e < entryCount; e++) {
+      var method = view.getUint16(p + 10, true);
+      var compSize = view.getUint32(p + 20, true);
+      var nameLen = view.getUint16(p + 28, true);
+      var extraLen = view.getUint16(p + 30, true);
+      var commentLen = view.getUint16(p + 32, true);
+      var localHeaderOffset = view.getUint32(p + 42, true);
+      var name = dec.decode(new Uint8Array(view.buffer, view.byteOffset + p + 46, nameLen));
+      entries[name] = { method: method, compSize: compSize, localHeaderOffset: localHeaderOffset };
+      p += 46 + nameLen + extraLen + commentLen;
+    }
+    return entries;
+  }
+  function extractEntryBytes(view, entry) {
+    var lp = entry.localHeaderOffset;
+    var nameLen = view.getUint16(lp + 26, true);
+    var extraLen = view.getUint16(lp + 28, true);
+    var dataStart = lp + 30 + nameLen + extraLen;
+    return new Uint8Array(view.buffer, view.byteOffset + dataStart, entry.compSize);
+  }
+  function inflateRaw(bytes) {
+    if (typeof DecompressionStream === "undefined") {
+      return Promise.reject(new Error("браузер не підтримує розпакування ZIP (DecompressionStream) — оновіть браузер"));
+    }
+    var ds = new DecompressionStream("deflate-raw");
+    var stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return new Response(stream).arrayBuffer();
+  }
+  function readZipFile(view, entries, name) {
+    var entry = entries[name];
+    if (!entry) return Promise.resolve(null);
+    var raw = extractEntryBytes(view, entry);
+    if (entry.method === 0) return Promise.resolve(new TextDecoder("utf-8").decode(raw));
+    return inflateRaw(raw).then(function (buf) { return new TextDecoder("utf-8").decode(buf); });
+  }
+  function colLetterToIndex(ref) {
+    var m = ref.match(/^([A-Z]+)/);
+    if (!m) return -1;
+    var n = 0;
+    for (var k = 0; k < m[1].length; k++) n = n * 26 + (m[1].charCodeAt(k) - 64);
+    return n - 1;
+  }
+  function xmlUnescape(s) {
+    return s.replace(/<[^>]+>/g, "")
+      // numeric character references (&#1041; / &#x419;) — common for
+      // non-ASCII text (e.g. Cyrillic) in inline-string cells
+      .replace(/&#x([0-9a-fA-F]+);/g, function (_, h) { return String.fromCodePoint(parseInt(h, 16)); })
+      .replace(/&#(\d+);/g, function (_, d) { return String.fromCodePoint(parseInt(d, 10)); })
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+  }
+  function parseSheetRows(xml, sharedStrings) {
+    var rows = [];
+    var rowRe = /<(?:x:)?row[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/(?:x:)?row>/g;
+    var rm;
+    while ((rm = rowRe.exec(xml))) {
+      var rowNum = parseInt(rm[1], 10);
+      var rowXml = rm[2];
+      var cellRe = /<(?:x:)?c\b([^>]*)>([\s\S]*?)<\/(?:x:)?c>|<(?:x:)?c\b([^>]*)\/>/g;
+      var cm;
+      var cells = {};
+      while ((cm = cellRe.exec(rowXml))) {
+        var attrs = cm[1] !== undefined ? cm[1] : cm[3];
+        var inner = cm[2] || "";
+        var refM = attrs.match(/r="([A-Z]+\d+)"/);
+        var typeM = attrs.match(/t="([a-zA-Z]+)"/);
+        var ref = refM ? refM[1] : null;
+        var type = typeM ? typeM[1] : "n";
+        var vM = inner.match(/<(?:x:)?v>([\s\S]*?)<\/(?:x:)?v>/);
+        var isM = inner.match(/<(?:x:)?is>([\s\S]*?)<\/(?:x:)?is>/);
+        var raw;
+        if (isM) {
+          // inline strings wrap their text in one or more <t> runs
+          // (<is><t>...</t></is>, possibly several <r><t>...</t></r> runs
+          // for rich text) — pull just the text out, not the tags.
+          var tRe2 = /<(?:x:)?t[^>]*>([\s\S]*?)<\/(?:x:)?t>/g, tm2, txt2 = "";
+          while ((tm2 = tRe2.exec(isM[1]))) txt2 += tm2[1];
+          raw = xmlUnescape(txt2);
+        } else {
+          raw = xmlUnescape(vM ? vM[1] : "");
+        }
+        var value;
+        if (type === "s") {
+          var idx = parseInt(raw, 10);
+          value = sharedStrings && sharedStrings[idx] !== undefined ? sharedStrings[idx] : "";
+        } else if (type === "str" || type === "inlineStr" || type === "e" || type === "b") {
+          value = raw;
+        } else if (type === "d") {
+          value = raw;
+        } else {
+          value = raw === "" ? null : Number(raw);
+        }
+        if (ref) cells[colLetterToIndex(ref)] = value;
+      }
+      rows.push({ r: rowNum, cells: cells });
+    }
+    return rows;
+  }
+  function parseSharedStrings(xml) {
+    if (!xml) return [];
+    var out = [];
+    var siRe = /<(?:x:)?si>([\s\S]*?)<\/(?:x:)?si>/g;
+    var m;
+    while ((m = siRe.exec(xml))) {
+      var tRe = /<(?:x:)?t[^>]*>([\s\S]*?)<\/(?:x:)?t>/g, tm, text = "";
+      while ((tm = tRe.exec(m[1]))) text += tm[1];
+      out.push(xmlUnescape(text));
+    }
+    return out;
+  }
+  function parseXlsxArrayBuffer(arrayBuffer) {
+    var view = new DataView(arrayBuffer);
+    var entries = readZipEntries(view);
+    var sheetName = Object.keys(entries).filter(function (n) { return /^xl\/worksheets\/sheet1\.xml$/i.test(n); })[0] ||
+      Object.keys(entries).filter(function (n) { return /^xl\/worksheets\//i.test(n); })[0];
+    if (!sheetName) return Promise.reject(new Error("у файлі немає аркуша (xl/worksheets/*.xml)"));
+    return readZipFile(view, entries, sheetName).then(function (sheetXml) {
+      var sharedPromise = entries["xl/sharedStrings.xml"]
+        ? readZipFile(view, entries, "xl/sharedStrings.xml").then(parseSharedStrings)
+        : Promise.resolve([]);
+      return sharedPromise.then(function (shared) { return parseSheetRows(sheetXml, shared); });
+    });
+  }
+  function mergeSheetRows(rows) {
+    var byRow = {};
+    rows.forEach(function (r) {
+      byRow[r.r] = byRow[r.r] || {};
+      var keys = Object.keys(r.cells);
+      for (var i = 0; i < keys.length; i++) byRow[r.r][keys[i]] = r.cells[keys[i]];
+    });
+    return byRow;
+  }
+  function extractHostJournal(rows) {
+    var byRow = mergeSheetRows(rows);
+    var meta = { atmId: null, branch: null, address: null, deviceType: null, cycle: null, periodFrom: null, periodTo: null };
+    var headerRow = null, headerRows = [], sectionMarks = [];
+    var rowNums = Object.keys(byRow).map(Number).sort(function (a, b) { return a - b; });
+    rowNums.forEach(function (rn) {
+      var cells = byRow[rn];
+      Object.keys(cells).forEach(function (ci) {
+        var v = cells[ci];
+        if (typeof v !== "string") return;
+        var m;
+        if ((m = v.match(/Банкомат\s+(\S+)/))) meta.atmId = m[1];
+        else if ((m = v.match(/^Назва\s+(.+)/))) meta.branch = m[1];
+        else if ((m = v.match(/Розташування\s*:\s*(.+)/))) meta.address = m[1];
+        else if ((m = v.match(/Тип пристрою\s*:\s*(.+)/))) meta.deviceType = m[1];
+        else if ((m = v.match(/Цикл\s*:\s*(\S+)/))) meta.cycle = m[1];
+        else if ((m = v.match(/Період\s*:\s*([\d.]+\s[\d:]+)\s*-\s*([\d.]+\s[\d:]+)/))) { meta.periodFrom = m[1]; meta.periodTo = m[2]; }
+      });
+      if (cells[0] === "Дата транзакції") { headerRows.push(rn); if (headerRow === null) headerRow = rn; }
+      // Експорт іде двома блоками: спочатку оброблені операції, потім
+      // відмовлені. Позначка блоку — це підсумковий рядок, який стоїть
+      // ПІСЛЯ своїх операцій («Оброблені (Posted) | 666 | сума»), тож
+      // операція належить до першої позначки, що йде за нею. У самому
+      // рядку є кількість і сума — за ними потім звіряємо розбір.
+      Object.keys(cells).forEach(function (ci) {
+        var v = cells[ci];
+        if (typeof v !== "string") return;
+        var kind = null;
+        if (/всього|разом|^total\b|підсумок/i.test(v)) kind = "total";
+        else if (/відмовлен|відхилен|неуспішн|declin|reject/i.test(v)) kind = "declined";
+        else if (/оброблен|успішн|проведен|posted/i.test(v)) kind = "processed";
+        if (!kind) return;
+        var nums = [];
+        Object.keys(cells).forEach(function (cj) {
+          var n = cells[cj];
+          if (typeof n === "number") nums.push(n);
+          else if (typeof n === "string" && /^[\d\s  ]+[.,]?\d*$/.test(n.trim()) && n.trim()) {
+            var p = parseFloat(n.replace(/[\s ]/g, "").replace(",", "."));
+            if (isFinite(p)) nums.push(p);
+          }
+        });
+        sectionMarks.push({ row: rn, kind: kind, text: v.trim(),
+          count: nums.length ? nums[0] : null, sum: nums.length > 1 ? nums[nums.length - 1] : null });
+      });
+    });
+    // якщо текстових маркерів немає, але шапка трапилась двічі — усе після
+    // другої шапки вважаємо блоком відмовлених
+    if (!sectionMarks.length && headerRows.length > 1) {
+      // без підсумкових рядків залишається лише орієнтир на другу шапку:
+      // тоді все після неї — це вже блок відмовлених
+      sectionMarks.push({ row: rowNums[rowNums.length - 1] + 1, kind: "declined", text: "другий блок таблиці", count: null, sum: null });
+      sectionMarks.push({ row: headerRows[1], kind: "processed", text: "перший блок таблиці", count: null, sum: null });
+    }
+    sectionMarks.sort(function (a, b) { return a.row - b.row; });
+    // операція належить блоку, підсумок якого йде першим ПІСЛЯ неї
+    function sectionOf(rn) {
+      for (var i = 0; i < sectionMarks.length; i++) {
+        if (sectionMarks[i].row >= rn && sectionMarks[i].kind !== "total") return sectionMarks[i].kind;
+      }
+      return "processed";
+    }
+    var txns = [];
+    if (headerRow !== null) {
+      rowNums.forEach(function (rn) {
+        if (rn <= headerRow) return;
+        var cells = byRow[rn];
+        if (typeof cells[0] !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(cells[0])) return;
+        txns.push({
+          dateTime: cells[0],
+          card: cells[1] || "",
+          authCode: cells[2] || "",
+          rrn: cells[3] || "",
+          amount: typeof cells[4] === "number" ? cells[4] : (Number(cells[4]) || 0),
+          type: cells[5] || "",
+          detail: cells[6] || "",
+          declined: sectionOf(rn) === "declined"
+        });
+      });
+    }
+    meta.sections = sectionMarks.map(function (x) { return x.text; });
+    // самоперевірка: скільки операцій ми віднесли до кожного блоку проти
+    // того, що заявлено в підсумкових рядках самого файлу
+    meta.sectionCheck = sectionMarks.filter(function (x) { return x.kind !== "total" && x.count !== null; })
+      .map(function (x) {
+        var got = txns.filter(function (t) { return (t.declined ? "declined" : "processed") === x.kind; }).length;
+        return { kind: x.kind, text: x.text, declared: x.count, parsed: got, ok: x.count === got };
+      });
+    return { meta: meta, txns: txns };
+  }
+
+  // ---------------------------------------------------------------
+  // Cycle reconciliation: ATM device-log transaction sessions and the
+  // host/device matching engine.
+  // ---------------------------------------------------------------
+  function cardKeyOf(masked) {
+    if (!masked) return null;
+    var m = masked.match(/^(\d{4,6}).*?(\d{4})$/);
+    if (!m) return null;
+    return m[1].slice(0, 6) + "|" + m[2];
+  }
+  // Receipt blocks printed into the device log right after a completed host
+  // request — these carry the SAME auth code / RRN the host journal records,
+  // so matching on RRN is exact (no card+time fuzziness needed). Shape:
+  //   ******************************
+  //   <ATMID> DD.MM.YY HH:MM:SS
+  //   X..NNNN                        (card mask — ABSENT for cardless withdrawals)
+  //   <TAG> NN
+  //   <authCode>/<RRN>   <sign><amount>.NN UAH   (authCode may be blank for cardless)
+  //   [Type X: NN ...]  (cassette detail, CASH_WITHDRAWAL only)
+  var RECEIPT_RE = /^\*+\r?\n(\S+)\s+(\d{2})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\r?\n(?:\d\.\.(\d{4})\r?\n)?([A-Z_]+)\s+\d+\r?\n([A-Za-z0-9]*)\/(\d+)\s+([+-]?[\d.]+)\s+UAH/gm;
+  // "Cash withdrawal" covers plain card withdrawals AND cardless/QR-style
+  // ones (CARDLESS_CASH_WITHDRAWAL) — anything whose tag ends this way is a
+  // real cash dispense that must be reconciled, not just the literal tag.
+  function isCashTag(tag) { return /CASH_WITHDRAWAL$/.test(tag || ""); }
+  // A printed receipt only proves the host approved the dispense and the
+  // ATM issued the cash command — it does NOT by itself prove the cash was
+  // actually handed to the customer. Look a little further in the raw log
+  // for the physical confirmation (CASH PRESENTED / CASH TAKEN) or signs
+  // that the device crashed/rebooted before it could confirm.
+  // The receipt block's position relative to CASH PRESENTED/CASH TAKEN is
+  // NOT consistent across logs — some print the receipt right after
+  // presenting the cash (confirmation lines come BEFORE the "******"
+  // header), others print it as soon as the cash command is issued
+  // (confirmation lines come AFTER). So look for the confirmation anywhere
+  // within the enclosing transaction (from the nearest preceding
+  // "-> TRANSACTION START" to the nearest following "<- TRANSACTION END"),
+  // not just forward from the receipt itself.
+  function scanDispenseConfirmation(text, matchStart, matchEnd) {
+    var winStartIdx = text.lastIndexOf("-> TRANSACTION START", matchStart);
+    var winStart = winStartIdx >= 0 ? winStartIdx : Math.max(0, matchStart - 1000);
+    var candidates = [matchEnd + 3000];
+    var endIdx = text.indexOf("<- TRANSACTION END", matchEnd);
+    if (endIdx >= 0) candidates.push(endIdx + 40);
+    var nextMarker = text.indexOf("******", matchEnd);
+    if (nextMarker >= 0) candidates.push(nextMarker);
+    var nextStart = text.indexOf("-> TRANSACTION START", matchEnd);
+    if (nextStart >= 0) candidates.push(nextStart);
+    var winEnd = Math.max(matchEnd, Math.min.apply(null, candidates));
+    var scope = text.slice(winStart, winEnd);
+    // a crash specifically has to follow the receipt to explain a missing
+    // confirmation — one earlier in the same transaction is unrelated
+    var afterScope = text.slice(matchEnd, matchEnd + 3000);
+    return {
+      presented: /CASH PRESENTED/.test(scope),
+      taken: /CASH TAKEN/.test(scope),
+      retracted: /RETRACT/i.test(scope),
+      crashedNearby: /ILLEGAL SHUTDOWN/.test(afterScope) || /JOURNALING STARTED/.test(afterScope)
+    };
+  }
+  function parseAtmReceipts(text, filename) {
+    var receipts = [];
+    var m;
+    RECEIPT_RE.lastIndex = 0;
+    while ((m = RECEIPT_RE.exec(text))) {
+      var dt = new Date(Date.UTC(2000 + (+m[4]), (+m[3]) - 1, +m[2], +m[5], +m[6], +m[7]));
+      var confirm = scanDispenseConfirmation(text, m.index, RECEIPT_RE.lastIndex);
+      receipts.push({
+        dateTime: dt, atmId: m[1], last4: m[8] || null, tag: m[9],
+        authCode: m[10] || "", rrn: m[11], amount: parseFloat(m[12]),
+        sourceFile: filename, confirm: confirm
+      });
+    }
+    return receipts;
+  }
+  // ---------------------------------------------------------------
+  // "Risk events" — technical conditions logged by the ATM that can
+  // explain a physical cash shortage/surplus even beyond the RRN-matched
+  // anomalies above: a lost connection to the host, an unexpected
+  // power-off/reboot mid-cycle, a cassette running low, or the safe/
+  // cassette doors being opened outside the normal collection window.
+  // ---------------------------------------------------------------
+  function parseYmdHms(dateStr, timeStr) {
+    var dm = String(dateStr).match(/(\d{4})-(\d{2})-(\d{2})/);
+    var tm = String(timeStr).match(/(\d{2}):(\d{2}):(\d{2})/);
+    if (!dm || !tm) return new Date(NaN);
+    return new Date(Date.UTC(+dm[1], (+dm[2]) - 1, +dm[3], +tm[1], +tm[2], +tm[3]));
+  }
+  // Power-loss / reboot blocks look like:
+  //   12:05:53 	WAS FROM 2026-04-21 12:02:11 TILL 2026-04-21 12:05:53
+  //   12:05:53 	REASON : SHUTDOWN
+  //   ... or, for the unexpected-power-loss variant reported separately:
+  //   12:05:53 	FROM 2026-04-21 12:01:38 TILL 2026-04-21 12:03:26
+  //   12:05:53 	REASON : ILLEGAL SHUTDOWN
+  var REBOOT_RE = /\d{2}:\d{2}:\d{2}[ \t]+(?:WAS )?FROM (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) TILL (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\r?\n\d{2}:\d{2}:\d{2}[ \t]+REASON\s*:\s*([A-Z ]+)\r?\n/g;
+  var SERVICE_LINE_RE = /^(OPERATOR DOOR OPENED|OPERATOR DOOR CLOSED|SAFE DOOR OPENED|SAFE DOOR CLOSED|REJECT CASSETTE REMOVED|BOTTOM CASSETTE INSERTED|TOP CASSETTE INSERTED|CASSETTE INSERTED|CASSETTE REMOVED)$/;
+
+  // ---------------------------------------------------------------
+  // Розпізнавання технічних подій і помилок у рядках журналу.
+  // Перевіряється лише текст рядка після часової позначки; перше
+  // правило, що спрацювало, виграє, тому специфічні йдуть першими.
+  // sev  — критичність, cash — чи може подія прямо змінити залишок
+  // готівки в банкоматі (саме такі події важливі для пошуку недостачі).
+  // ---------------------------------------------------------------
+  var LOG_EVENT_RULES = [
+    { key: "retract", re: /^(?:CASH|NOTES?|BILLS?|MONEY)\s+(?:WERE\s+)?RETRACTED|^RETRACT\s+(?:STARTED|EXECUTED|DONE)|^NOTES?\s+TO\s+RETRACT/, sev: "critical", cash: true,
+      label: "Готівку втягнуто назад у банкомат (retract)",
+      detail: "Клієнт не забрав купюри з лотка, і банкомат утягнув їх у касету ретракту. Готівка фізично залишилась у банкоматі: якщо процесинг не зробив зворотну операцію, за журналом буде видача, а в касетах — надлишок." },
+    { key: "notTaken", re: /(?:CASH|NOTES?|BILLS?)\s+NOT\s+TAKEN|^NOT\s+TAKEN/, sev: "warning", cash: true,
+      label: "Готівку не забрано з лотка видачі",
+      detail: "Банкомат виклав купюри, але не зафіксував, що їх забрали. Далі зазвичай іде ретракт — перевірте вміст касети ретракту за цей цикл." },
+    { key: "dispenseFail", re: /UNABLE\s+TO\s+DISPENSE|DISPENSE\s+(?:FAILED|ERROR)|NO\s+DISPENSE|CASH\s+DISPENSE\s+ERROR/, sev: "critical", cash: true,
+      label: "Збій видачі готівки",
+      detail: "Банкомат не зміг виконати команду видачі. Операція могла завершитись частковою видачею — звірте суму з журналом процесингу." },
+    { key: "jam", re: /\bJAM(?:MED|MING)?\b/, sev: "critical", cash: true,
+      label: "Затор (jam) у тракті",
+      detail: "Затор банкнот або носія. Купюри могли залишитись у тракті поза касетами — це типова причина фізичної розбіжності при перерахунку." },
+    { key: "reject", re: /NOTES?\s+REJECTED|TOO\s+MANY\s+REJECTS|REJECT\s+CASSETTE\s+(?:FULL|ERROR)/, sev: "warning", cash: true,
+      label: "Забраковані банкноти (reject)",
+      detail: "Купюри відбраковано в касету реджекту. Вони не потрапили клієнту, але й вибули з касети видачі — враховуйте їх при перерахунку." },
+    { key: "cdmDevice", re: /^(?:CDM|CDU|DISPENSER)\b.*(?:ERROR|FAULT|FAIL|NOT\s+READY|BLOCKED)/, sev: "critical", cash: true,
+      label: "Помилка диспенсера",
+      detail: "Диспенсер повідомив про несправність поза рамками конкретної транзакції. Перевірте, чи не збіглася вона за часом із виявленими аномаліями." },
+    { key: "device", re: /^(?:DEVICE|HARDWARE|MODULE)\s+(?:ERROR|FAULT)|^FATAL\s+ERROR|OUT\s+OF\s+ORDER/, sev: "critical", cash: false,
+      label: "Апаратна помилка пристрою",
+      detail: "Банкомат зафіксував апаратну несправність. Сама по собі вона не змінює залишок готівки, але може супроводжувати перервану видачу." },
+    { key: "power", re: /^POWER\s+(?:FAIL|LOSS|DOWN)|^UPS\b.*(?:FAIL|BATTERY)/, sev: "critical", cash: true,
+      label: "Проблема з живленням",
+      detail: "Зникнення живлення під час видачі — купюри можуть залишитись у тракті, а транзакція не отримає підтвердження від пристрою." },
+    { key: "cassetteErr", re: /^(?:PHYSICAL|LOGICAL)?\s*CASSETTE\s+\d+\s+(?:ERROR|FAULT|JAM|BLOCKED|NOT\s+READY)/, sev: "warning", cash: true,
+      label: function (l) { var m = l.match(/CASSETTE\s+(\d+)/); return "Помилка касети" + (m ? " №" + m[1] : ""); },
+      detail: "Касета повідомила про несправність — видача з неї могла бути неповною або не відбутись зовсім." },
+    { key: "sop", re: /^CASH\s+COUNTERS\s+(BEFORE|AFTER)\s+SOP/, sev: "info", cash: true,
+      label: function (l) { return /BEFORE/.test(l) ? "Лічильники готівки до операції з касетами (BEFORE SOP)" : "Лічильники готівки після операції з касетами (AFTER SOP)"; },
+      detail: "Банкомат зафіксував лічильники до/після операції з касетами. Це опорні точки для звірки фактичного залишку з журналом." },
+    { key: "serviceMode", re: /^SERVICEMODE\s+(ENTERED|LEFT)|^SUPERVISOR\s+MODE/, sev: "info", cash: false,
+      label: function (l) { return /ENTERED/.test(l) ? "Вхід у сервісний режим" : (/LEFT/.test(l) ? "Вихід із сервісного режиму" : "Режим супервізора"); },
+      detail: "Вхід або вихід із сервісного режиму. Дії в цьому режимі (обмін касет, тести видачі) змінюють лічильники поза звичайними транзакціями." },
+    { key: "cardErr", re: /^MCRW\b.*(?:ERROR|FAULT)|CARD\s+(?:JAMMED|CAPTURED|RETAINED)|CARD\s+READER\s+(?:ERROR|FAULT)/, sev: "warning", cash: false,
+      label: "Проблема з картрідером",
+      detail: "Помилка або захоплення картки. На залишок готівки не впливає, але пояснює обірвані сесії без видачі." },
+    { key: "printer", re: /^(?:PRINTER|RECEIPT|JOURNAL\s+PRINTER)\b.*(?:ERROR|FAULT|PAPER\s+OUT|NO\s+PAPER)/, sev: "info", cash: false,
+      label: "Проблема з принтером",
+      detail: "Помилка друку чека або журналу. Впливає на наявність паперового підтвердження, не на суму готівки." },
+    { key: "hostErr", re: /NO\s+RESPONSE\s+FROM\s+HOST|HOST\s+(?:TIMEOUT|UNREACHABLE)|COMMUNICATION\s+(?:ERROR|FAILURE)/, sev: "warning", cash: true,
+      label: "Помилка зв'язку з хостом",
+      detail: "Відповідь від процесингу не отримано. Видача могла відбутись фізично, але не потрапити в журнал операцій — або навпаки." },
+    { key: "timeout", re: /\bTIMEOUT\b/, sev: "warning", cash: false,
+      label: "Тайм-аут операції",
+      detail: "Пристрій або хост не відповів у відведений час. Перевірте, чи не обірвалась на цьому місці видача." },
+    { key: "unsolicited", re: /^UNSOLICITED\s+STATUS/, sev: "info", cash: false,
+      label: "Позаплановий статус від пристрою",
+      detail: "Пристрій надіслав статус поза запитом — зазвичай супроводжує зміну стану обладнання." }
+  ];
+  // Рядок, у якому є ознака збою, але який не підійшов під жодне правило,
+  // не ігнорується, а показується як нерозпізнана помилка — інакше нові
+  // формати повідомлень тихо випадали б з аналізу.
+  var GENERIC_ERROR_RE = /\b(?:ERROR|ERRORS|FAILURE|FAILED|FAULT|BLOCKED|BROKEN|NOT\s+READY|MALFUNCTION)\b/;
+  // Штатний «шум», який містить ці слова, але помилкою не є.
+  var LOG_EVENT_IGNORE_RE = /^(?:GO (?:IN|OUT) OF SERVICE COMMAND|EXTERNAL AUTHENTICATE|TRANSACTION (?:REQUEST|REPLY)|TVR:|TRACK 2 DATA|PIN ENTERED|CARD\(|INFORMATION\b|AMOUNT\b|\[ATM)/;
+  function matchLogEvent(rest) {
+    if (LOG_EVENT_IGNORE_RE.test(rest)) return null;
+    for (var i = 0; i < LOG_EVENT_RULES.length; i++) {
+      if (LOG_EVENT_RULES[i].re.test(rest)) return LOG_EVENT_RULES[i];
+    }
+    if (GENERIC_ERROR_RE.test(rest)) {
+      return { key: "unknownError", sev: "warning", cash: false,
+        label: "Нерозпізнана помилка в логу",
+        detail: "Рядок містить ознаку збою, але не підпадає під жодне відоме правило. Перевірте його вручну — можливо, це новий формат повідомлення, який варто додати в аналізатор." };
+    }
+    return null;
+  }
+  function parseAtmRiskEvents(text, filename) {
+    var baseDate = detectBaseDate(text, filename) || "1970-01-01";
+    var lines = text.split(/\r\n|\n/);
+    var dayOffset = 0, prevSec = -1;
+    function toDate(hms) {
+      var parts = hms.split(":").map(Number);
+      var sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (prevSec !== -1 && sec < prevSec - 3600 * 12) dayOffset++;
+      prevSec = sec;
+      var d = new Date(baseDate + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() + dayOffset);
+      d.setUTCHours(parts[0], parts[1], parts[2], 0);
+      return d;
+    }
+    var events = [];
+    var pendingOffline = null;
+    var doorTimes = [];
+    // Однакові помилки в логу повторюються десятками разів. Групуємо їх за
+    // типом і текстом (цифри знеособлені), лишаючи всі часові позначки, —
+    // так список подій лишається читабельним, але жодне спрацювання не
+    // губиться і прив'язка до часу конкретної операції зберігається.
+    var grouped = {};
+    function addLogEvent(rule, dt, rawLine, extraKey) {
+      var gk = rule.key + "|" + extraKey + "|" + rawLine.replace(/\d+/g, "#");
+      var g = grouped[gk];
+      if (!g) {
+        grouped[gk] = {
+          type: "logEvent", key: rule.key, sev: rule.sev, cash: !!rule.cash,
+          label: typeof rule.label === "function" ? rule.label(rawLine) : rule.label,
+          detail: rule.detail, sample: rawLine,
+          time: dt, endTime: dt, times: [dt], count: 1, sourceFile: filename
+        };
+        return;
+      }
+      g.count++;
+      g.times.push(dt);
+      if (dt < g.time) g.time = dt;
+      if (dt > g.endTime) g.endTime = dt;
+    }
+    var timeRe = /^(\d{2}):(\d{2}):(\d{2})[\t ]?(.*)$/;
+    for (var i = 0; i < lines.length; i++) {
+      var m = lines[i].match(timeRe);
+      if (!m) continue;
+      var hms = m[1] + ":" + m[2] + ":" + m[3];
+      var rest = m[4].trim();
+      var dt = toDate(hms);
+      if (rest === "COMMUNICATION OFFLINE") {
+        pendingOffline = dt;
+        continue;
+      }
+      if (rest === "COMMUNICATION ONLINE") {
+        if (pendingOffline) { events.push({ type: "commLoss", time: pendingOffline, endTime: dt, sourceFile: filename }); pendingOffline = null; }
+        continue;
+      }
+      var cm = rest.match(/^(PHYSICAL|LOGICAL) CASSETTE (\d+) (LOW|OUT|EMPTY|ERROR)$/);
+      if (cm) { events.push({ type: "cassetteLow", time: dt, endTime: null, kind: cm[1], no: cm[2], state: cm[3], sourceFile: filename }); continue; }
+      if (SERVICE_LINE_RE.test(rest)) { doorTimes.push(dt); continue; }
+      // помилка диспенсера з розшифровкою коду
+      var mCdm = rest.match(/^CDM ERROR:\s*(.+)$/);
+      if (mCdm) {
+        var dec = decodeCdmCode(mCdm[1].trim().split(/\s+/));
+        addLogEvent({ key: "cdmError", sev: "critical", cash: true,
+          label: "Помилка диспенсера" + (dec ? ", " + dec.label.toLowerCase() : ""),
+          detail: dec ? dec.info.reason + " Дія: " + dec.info.measure : "Код помилки в рядку журналу розібрати не вдалося." },
+          dt, rest, dec ? dec.key : mCdm[1].trim());
+        continue;
+      }
+      var mTxFail = rest.match(/^TRANSACTION\s+(\d+)\s+FAILED/);
+      if (mTxFail) {
+        addLogEvent({ key: "txFailed", sev: "warning", cash: true,
+          label: "Транзакція завершилась помилкою",
+          detail: "Банкомат позначив транзакцію як невдалу. Якщо в журналі процесингу вона успішна — це пряма причина розбіжності." }, dt, rest, "");
+        continue;
+      }
+      var rule = matchLogEvent(rest);
+      if (rule) addLogEvent(rule, dt, rest, "");
+    }
+    Object.keys(grouped).forEach(function (k) { events.push(grouped[k]); });
+    if (pendingOffline) events.push({ type: "commLoss", time: pendingOffline, endTime: null, sourceFile: filename });
+
+    // cluster door/cassette-service timestamps within 10 min of each other
+    // into a single "service window" per file
+    doorTimes.sort(function (a, b) { return a - b; });
+    var clusters = [];
+    doorTimes.forEach(function (t) {
+      var last = clusters[clusters.length - 1];
+      if (last && (t - last.end) / 1000 <= 600) last.end = t;
+      else clusters.push({ start: t, end: t });
+    });
+    clusters.forEach(function (c) { events.push({ type: "service", time: c.start, endTime: c.end, sourceFile: filename }); });
+
+    var reboot;
+    REBOOT_RE.lastIndex = 0;
+    while ((reboot = REBOOT_RE.exec(text))) {
+      var from = parseYmdHms(reboot[1], reboot[2]);
+      var till = parseYmdHms(reboot[3], reboot[4]);
+      var reason = reboot[5].trim();
+      events.push({ type: "reboot", time: from, endTime: till, illegal: /ILLEGAL/.test(reason), reason: reason, sourceFile: filename });
+    }
+    return events;
+  }
+  function eventInPeriod(e, period) {
+    if (!period) return true;
+    var en = e.endTime || e.time;
+    return en >= period.from && e.time <= period.to;
+  }
+  function isBoundaryService(e, period) {
+    if (!period) return false;
+    var en = e.endTime || e.time;
+    var nearFrom = Math.abs(e.time - period.from) <= 20 * 60 * 1000 || Math.abs(en - period.from) <= 20 * 60 * 1000;
+    var nearTo = Math.abs(e.time - period.to) <= 20 * 60 * 1000 || Math.abs(en - period.to) <= 20 * 60 * 1000;
+    return nearFrom || nearTo;
+  }
+  function nearbyRiskEvents(time, riskEvents, windowSec) {
+    var t = time.getTime();
+    return riskEvents.filter(function (e) {
+      // згрупована подія може тягнутись через увесь день — тоді «поруч за
+      // часом» вважаємо не весь інтервал, а кожне окреме спрацювання
+      if (e.times && e.times.length) {
+        return e.times.some(function (x) { return Math.abs(x.getTime() - t) <= windowSec * 1000; });
+      }
+      var s = e.time.getTime(), en = (e.endTime || e.time).getTime();
+      return (t + windowSec * 1000) >= s && (t - windowSec * 1000) <= en;
+    });
+  }
+  function riskEventLabel(e) {
+    if (e.type === "logEvent") {
+      var when = e.count > 1
+        ? fmtDateTime(e.time) + "–" + fmtDateTime(e.endTime) + ", " + e.count + " раз."
+        : fmtDateTime(e.time);
+      return e.label + " — " + when;
+    }
+    if (e.type === "commLoss") {
+      var durTxt = e.endTime ? formatDuration(Math.max(1, Math.round((e.endTime - e.time) / 60000))) : "до кінця файлу логу";
+      return "Обрив зв'язку з хостом " + fmtDateTime(e.time) + (e.endTime ? "–" + fmtDateTime(e.endTime) : "") + " (" + durTxt + ")";
+    }
+    if (e.type === "reboot") {
+      return (e.illegal ? "Позаштатне вимкнення АТМ (ILLEGAL SHUTDOWN)" : "Штатний перезапуск АТМ") + " " + fmtDateTime(e.time) + "–" + fmtDateTime(e.endTime);
+    }
+    if (e.type === "cassetteLow") {
+      return (e.kind === "PHYSICAL" ? "Фізична" : "Логічна") + " касета " + e.no + " майже порожня (" + e.state + ") — " + fmtDateTime(e.time);
+    }
+    if (e.type === "service") {
+      return "Відкриття сейфа/касет поза стандартним вікном інкасації " + fmtDateTime(e.time) + (e.endTime && e.endTime.getTime() !== e.time.getTime() ? "–" + fmtDateTime(e.endTime) : "");
+    }
+    return "Технічна подія " + fmtDateTime(e.time);
+  }
+  function riskEventDetail(e) {
+    if (e.type === "logEvent") {
+      var isTrace = /^trace/.test(e.key || "");
+      return e.detail + (isTrace ? " Файл трасування: " : " Лог: ") + e.sourceFile +
+        (isTrace ? ". Ознака в трасі: «" : ". Рядок журналу: «") + e.sample + "»." +
+        (e.count > 1 ? " Усього спрацювань: " + e.count + "." : "");
+    }
+    if (e.type === "commLoss") return "Лог: " + e.sourceFile + ". Операції, здійснені під час відсутності зв'язку з хостом, могли не потрапити в журнал процесингу навіть якщо готівку фактично видано.";
+    if (e.type === "reboot") return "Лог: " + e.sourceFile + ". " + (e.illegal ? "Пристрій вимкнувся або завис без штатної команди — перевірте операції, що збіглися в часі: видача могла початися, але не завершитись коректно." : "Плановий перезапуск програмного забезпечення.");
+    if (e.type === "cassetteLow") return "Лог: " + e.sourceFile + ". Якщо касету не поповнили під час найближчої інкасації, можливий дефіцит готівки цього номіналу.";
+    if (e.type === "service") return "Лог: " + e.sourceFile + ". Сейф чи касети відкривались не на початку і не в кінці циклу — перевірте протокол інкасатора на цей момент.";
+    return "Лог: " + e.sourceFile + ".";
+  }
+
+  // ---------------------------------------------------------------
+  // Логи трасування диспенсера (Wincor Nixdorf CCDM Trace, *.TRC.XML).
+  // На відміну від журналу .JRN, який пише прикладне ПЗ банкомата, траса
+  // йде від самого диспенсера: що фізично витягнуто з касет, що подано
+  // клієнту, що втягнуто назад чи відбраковано. Саме тут видно рух
+  // готівки, якого в журналі може не бути взагалі.
+  //
+  // Структура: <COMMAND type="DISPENSE|PRESENT|RETRACT|REJECT|RESET|
+  // TESTDISPENSE"> з вкладеними <ENTRY>, плюс окремі <EVENT> зі статусом
+  // пристрою (STDV) і станом касет (STCS).
+  //   CNG_DISP_STANDARD: «касета,кількість,реджект,статус» через «:»,
+  //     статус O — успішно, будь-що інше — збій;
+  //   STCS: NVAL — номінал касети N, NACT — залишок, NL_D — скільки взято
+  //     з неї останньою видачею, NREJ — реджекти, RACT/RRET — лічильники
+  //     касети реджекту/ретракту;
+  //   STDV: SCOD — двозначний код стану пристрою (той самий, що в таблиці
+  //     базових кодів CMD-V4 вище), ERROR/WARNING — сирі 16-значні поля.
+  // ---------------------------------------------------------------
+  function isTraceText(text, filename) {
+    if (/\.TRC\.XML$/i.test(filename || "")) return true;
+    var head = String(text).slice(0, 2000);
+    return /<TRACE\b/i.test(head) || /CCDM\s+Trace\s+File/i.test(head);
+  }
+  function parseTraceKv(payload) {
+    var out = {};
+    String(payload).replace(/;+\s*$/, "").split(",").forEach(function (kv) {
+      var i = kv.indexOf("=");
+      if (i > 0) out[kv.slice(0, i).trim()] = kv.slice(i + 1).trim();
+    });
+    return out;
+  }
+  function traceCassettes(kv) {
+    var out = [];
+    for (var i = 1; i <= 9; i++) {
+      if (kv[i + "VAL"] === undefined) continue;
+      out.push({
+        no: i, value: parseInt(kv[i + "VAL"], 10) || 0, currency: kv[i + "CUR"] || "",
+        state: kv[i + "STA"] || "", remaining: parseInt(kv[i + "ACT"], 10),
+        ndv: parseInt(kv[i + "NDV"], 10),
+        lastDispensed: parseInt(kv[i + "L_D"], 10) || 0, rejects: parseInt(kv[i + "REJ"], 10) || 0
+      });
+    }
+    return out;
+  }
+  // Однакові події групуються так само, як у журналі: один рядок зі
+  // лічильником повторів, але з усіма часовими позначками всередині.
+  function makeEventGrouper(filename) {
+    var grouped = {};
+    return {
+      add: function (ev, dt, sample) {
+        var gk = ev.key + "|" + (ev.gk || "") + "|" + String(sample).replace(/\d+/g, "#");
+        var g = grouped[gk];
+        if (!g) {
+          grouped[gk] = { type: "logEvent", key: ev.key, sev: ev.sev, cash: !!ev.cash,
+            label: ev.label, detail: ev.detail, sample: sample, time: dt, endTime: dt,
+            times: [dt], count: 1, sourceFile: filename };
+          return;
+        }
+        g.count++; g.times.push(dt);
+        if (dt < g.time) g.time = dt;
+        if (dt > g.endTime) g.endTime = dt;
+      },
+      list: function () { return Object.keys(grouped).map(function (k) { return grouped[k]; }); }
+    };
+  }
+  function parseTraceXml(text, filename) {
+    var g = makeEventGrouper(filename);
+    var res = { filename: filename, isTrace: true, dates: {}, dispenses: [], events: [],
+      counts: { dispense: 0, present: 0, retract: 0, reject: 0, reset: 0, test: 0, failed: 0 },
+      rejectedNotes: 0, currency: "", first: null, last: null, episodes: [], snapshots: [], stdv: [], info: {} };
+    var lastDispense = null, lastPresent = null;
+    function dt(d, t) { return new Date(d + "T" + t + "Z"); }
+
+    // Номінали касет є лише в станах STCS. Блок команди не завжди містить
+    // власний STCS (типово — тестова видача), тому для таких випадків
+    // беремо найближчий попередній стан у файлі.
+    var denomList = [];
+    var denomRe = /<(?:EVENT|ENTRY) date="[^"]*" time="[^"]*" type="STCS">([\s\S]*?)<\//g;
+    var dm;
+    while ((dm = denomRe.exec(text))) {
+      var map = {};
+      traceCassettes(parseTraceKv(dm[1])).forEach(function (c) { map[c.no] = c.value; });
+      denomList.push({ pos: dm.index, map: map });
+    }
+    function denomAt(pos, no) {
+      var best = null;
+      for (var i = 0; i < denomList.length; i++) {
+        if (denomList[i].pos <= pos) best = denomList[i]; else break;
+      }
+      if (!best) best = denomList[0];
+      return best && best.map[no] ? best.map[no] : 0;
+    }
+
+    var cmdRe = /<COMMAND date="(\d{4}-\d{2}-\d{2})" time="(\d{2}:\d{2}:\d{2})" type="([A-Z_]+)">([\s\S]*?)<\/COMMAND>/g;
+    var m;
+    while ((m = cmdRe.exec(text))) {
+      var when = dt(m[1], m[2]), typ = m[3], body = m[4], cmdPos = m.index;
+      res.dates[m[1]] = true;
+      if (typ === "DISPENSE" || typ === "TESTDISPENSE") {
+        var stcsM = body.match(/type="STCS">([\s\S]*?)<\//);
+        var kv = stcsM ? parseTraceKv(stcsM[1]) : null;
+        var dispM = body.match(/<ENTRY(?:\s+date="([\d-]+)")?(?:\s+time="([\d:]+)")?\s+type="(?:CNG_DISP_STANDARD|TESTDISPENSE_OUTPUT)">([\s\S]*?)<\//);
+        var isTest = typ === "TESTDISPENSE";
+        var items = [], amount = 0, rejects = 0, badItems = [];
+        if (dispM) {
+          dispM[3].replace(/;+\s*$/, "").split(":").forEach(function (part) {
+            var f = part.split(",");
+            if (f.length < 4) return;
+            var no = parseInt(f[0], 10);
+            var notes = parseInt(f[1], 10) || 0;
+            var rej = parseInt(f[2], 10) || 0;
+            var st = f[3].trim();
+            var val = kv ? (parseInt(kv[no + "VAL"], 10) || 0) : 0;
+            if (!val) val = denomAt(cmdPos, no);
+            amount += notes * val;
+            rejects += rej;
+            if (st !== "O") badItems.push({ no: no, status: st });
+            items.push({ no: no, notes: notes, rejects: rej, status: st, value: val });
+          });
+        }
+        if (kv && !res.currency) {
+          var cs = traceCassettes(kv);
+          if (cs.length) res.currency = cs[0].currency;
+        }
+        res.counts[isTest ? "test" : "dispense"]++;
+        res.rejectedNotes += rejects;
+        if (badItems.length) res.counts.failed++;
+        var disp = { time: when, dateStr: m[1], timeStr: m[2], payload: dispM ? dispM[3].trim() : "",
+          entryDate: dispM && dispM[1] ? dispM[1] : m[1], entryTime: dispM && dispM[2] ? dispM[2] : m[2],
+          items: items, amount: amount, rejects: rejects,
+          failed: badItems.length > 0, test: isTest, sourceFile: filename };
+        res.dispenses.push(disp);
+        if (!isTest) lastDispense = disp;
+        var listTxt = items.map(function (it) { return "касета " + it.no + " — " + it.notes + " шт. × " + it.value; }).join(", ");
+        if (badItems.length) {
+          g.add({ key: "traceDispFail", gk: badItems.map(function (b) { return b.no + b.status; }).join("/"),
+            sev: "critical", cash: true,
+            label: "Збій під час видачі з касети " + badItems.map(function (b) { return "№" + b.no; }).join(", "),
+            detail: "Диспенсер позначив видачу з касети статусом «" + badItems[0].status + "» замість «O». Склад видачі: " + listTxt +
+              ". Купюри могли лишитись у тракті або бути видані не в повному обсязі — саме такі випадки дають фізичну розбіжність при перерахунку." },
+            when, "DISPENSE " + listTxt);
+        }
+        if (rejects) {
+          g.add({ key: "traceReject", sev: "warning", cash: true,
+            label: "Забраковані банкноти під час видачі",
+            detail: "Під час цієї видачі диспенсер відбракував " + rejects + " купюр. Вони вибули з касети видачі, але клієнту не потрапили — при перерахунку їх треба шукати в касеті реджекту." },
+            when, "REJECT NOTES " + rejects);
+        }
+        if (isTest) {
+          g.add({ key: "traceTest", sev: "warning", cash: true,
+            label: "Тестова видача в сервісному режимі",
+            detail: "Тестова видача витягує купюри з касет без операції в журналі процесингу. Якщо їх не повернули в касету, вони дадуть недостачу. Склад: " + listTxt + "." },
+            when, "TESTDISPENSE " + listTxt);
+        }
+        continue;
+      }
+      if (typ === "PRESENT") {
+        res.counts.present++;
+        lastPresent = { time: when, dateStr: m[1], timeStr: m[2] };
+        continue;
+      }
+      if (typ === "RETRACT") {
+        res.counts.retract++;
+        // епізод «видача → подача → ретракт»: саме він потрібен у заключенні,
+        // бо показує, що купюри виходили з касет, але клієнту не дістались
+        var ep = res.episodes[res.episodes.length - 1];
+        if (ep && lastDispense && ep.dispense === lastDispense) {
+          ep.retracts.push({ time: when, dateStr: m[1], timeStr: m[2] });
+        } else {
+          res.episodes.push({ dispense: lastDispense, present: lastPresent,
+            retracts: [{ time: when, dateStr: m[1], timeStr: m[2] }], sourceFile: filename });
+        }
+        g.add({ key: "traceRetract", sev: "critical", cash: true,
+          label: "Втягування купюр назад у банкомат (RETRACT)",
+          detail: "Диспенсер отримав команду ретракту — купюри, подані клієнту, втягнуто назад. Фізично готівка лишилась у банкоматі; якщо процесинг не зробив сторно, за журналом буде видача, а в касеті ретракту — зайві купюри." },
+          when, "RETRACT");
+        continue;
+      }
+      if (typ === "REJECT") {
+        res.counts.reject++;
+        g.add({ key: "traceRejectCmd", sev: "warning", cash: true,
+          label: "Команда відбраковування купюр (REJECT)",
+          detail: "Купюри відправлено в касету реджекту. Вони вибули з касети видачі й не потрапили клієнту." },
+          when, "REJECT");
+        continue;
+      }
+      if (typ === "RESET") {
+        res.counts.reset++;
+        g.add({ key: "traceReset", sev: "info", cash: false,
+          label: "Скидання диспенсера (RESET)",
+          detail: "Скидання пристрою. Зазвичай іде після помилки — дивіться, який код стану був перед ним." },
+          when, "RESET");
+        continue;
+      }
+    }
+
+    // статус пристрою: код стану SCOD і сирі поля ERROR/WARNING
+    var stdvRe = /<(EVENT|ENTRY) date="(\d{4}-\d{2}-\d{2})" time="(\d{2}:\d{2}:\d{2})" type="STDV">([\s\S]*?)<\/\1>/g;
+    while ((m = stdvRe.exec(text))) {
+      var kvS = parseTraceKv(m[4]);
+      var whenS = dt(m[2], m[3]);
+      res.dates[m[2]] = true;
+      res.stdv.push({ time: whenS, kv: kvS, raw: m[0] });
+      var scod = kvS.SCOD || "00";
+      var errRaw = kvS.ERROR || "";
+      var errZero = !errRaw || /^0+$/.test(errRaw);
+      if (scod !== "00") {
+        var num = parseInt(scod, 10);
+        var info = CDM_DISPENSER_CODES[num] || (isNaN(num) ? null : inferCdmFamily(num));
+        var known = !!CDM_DISPENSER_CODES[num];
+        g.add({ key: "traceScod", gk: scod, sev: known || info ? "critical" : "warning", cash: true,
+          label: "Диспенсер повідомив код стану " + scod + (known ? "" : " (немає в таблиці)"),
+          detail: (info ? info.reason + " Дія: " + info.measure
+                        : "Код стану " + scod + " відсутній у перекладеній таблиці базових кодів CMD-V4.") +
+            " Поле SCOD у трасі — двозначний код стану диспенсера з тієї самої таблиці, що й коди CDM ERROR у журналі." +
+            (errZero ? "" : " Сире поле ERROR зі статусу: " + errRaw + " — розшифровується лише за документацією виробника.") },
+          whenS, "SCOD=" + scod);
+      } else if (!errZero) {
+        g.add({ key: "traceRawErr", gk: errRaw, sev: "warning", cash: false,
+          label: "Помилка в статусі диспенсера без коду стану",
+          detail: "У статусі пристрою поле ERROR = " + errRaw + " при SCOD=00. Значення цього поля розшифровується лише за документацією виробника — зафіксуйте його разом із часом і передайте сервісу." },
+          whenS, "ERROR=" + errRaw);
+      }
+    }
+
+    // стан касет: перший і останній знімок за файлом + порожні касети
+    var stcsRe = /<(?:EVENT|ENTRY) date="(\d{4}-\d{2}-\d{2})" time="(\d{2}:\d{2}:\d{2})" type="STCS">([\s\S]*?)<\//g;
+    while ((m = stcsRe.exec(text))) {
+      var kvC = parseTraceKv(m[3]);
+      var whenC = dt(m[1], m[2]);
+      res.dates[m[1]] = true;
+      var snap = { time: whenC, cassettes: traceCassettes(kvC),
+        rejectBox: parseInt(kvC.RACT, 10) || 0, retractBox: parseInt(kvC.RRET, 10) || 0 };
+      if (!res.first) res.first = snap;
+      res.last = snap;
+      res.snapshots.push(snap);
+      if (!res.currency && snap.cassettes.length) res.currency = snap.cassettes[0].currency;
+      snap.cassettes.forEach(function (c) {
+        if (c.state === "E") {
+          g.add({ key: "traceCassEmpty", gk: String(c.no), sev: "warning", cash: true,
+            label: "Касета №" + c.no + " (" + c.value + ") порожня",
+            detail: "Диспенсер позначив касету станом «E». Видачі цього номіналу далі не буде — перевірте, чи не залишились операції, які через це виконались частково." },
+            whenC, "CASSETTE STA=E " + c.no);
+        }
+      });
+    }
+
+    // версії ПЗ/прошивки та конфігурація пристрою — потрібні, щоб у
+    // заключенні було видно, про який саме модуль ідеться
+    var infoRe = /<EVENT date="[^"]*" time="[^"]*" type="(PS_RELEASE|CSC_DLL_RELEASE|CNG_FRM_RELEASE|CNG_STATUS_CONFIGURATION|CNG_TRACE_DYF)">([\s\S]*?)<\//g;
+    var im;
+    while ((im = infoRe.exec(text))) res.info[im[1]] = im[2].trim();
+
+    // до кожного епізоду з ретрактом підв'язуємо стан касет до видачі й
+    // після ретракту та найближчий статус пристрою: саме за ними видно,
+    // чи змінились лічильники NDV і лічильники реджекту/ретракту
+    res.episodes.forEach(function (e) {
+      var t0 = e.dispense ? e.dispense.time : e.retracts[0].time;
+      var t1 = e.retracts[e.retracts.length - 1].time;
+      var before = null, during = null, after = null;
+      res.snapshots.forEach(function (sn) {
+        if (sn.time < t0) before = sn;
+        if (!during && sn.time >= t0 && sn.time <= t1) during = sn;
+        if (!after && sn.time > t1) after = sn;
+      });
+      e.before = before;
+      // стан касет усередині блоку видачі — вже після того, як купюри
+      // вийняли з касет, але ще до ретракту
+      e.during = during;
+      e.after = after;
+      // якщо між ретрактом і наступним станом встигла пройти ще одна видача,
+      // порівнювати лічильники некоректно — зміни будуть уже не від ретракту
+      e.afterClean = !!after && !res.dispenses.some(function (d) {
+        return d.time > t1 && d.time < after.time;
+      });
+      var st = null;
+      res.stdv.forEach(function (x) { if (!st && x.time >= t1) st = x; });
+      e.stdvAfter = st;
+    });
+
+    res.events = g.list();
+    return res;
+  }
+
+  function parseAtmSessions(text, filename) {
+    var baseDate = detectBaseDate(text, filename) || "1970-01-01";
+    var lines = text.split(/\r\n|\n/);
+    var sessions = [];
+    var cur = null;
+    var dayOffset = 0, prevSec = -1;
+    var timeRe2 = /^(\d{2}):(\d{2}):(\d{2})[\t ]?(.*)$/;
+    function toDate(hms) {
+      var parts = hms.split(":").map(Number);
+      var sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (prevSec !== -1 && sec < prevSec - 3600 * 12) dayOffset++;
+      prevSec = sec;
+      var d = new Date(baseDate + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() + dayOffset);
+      d.setUTCHours(parts[0], parts[1], parts[2], 0);
+      return d;
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var m = line.match(timeRe2);
+      if (!m) continue;
+      var hms = m[1] + ":" + m[2] + ":" + m[3];
+      var rest = m[4].trim();
+      var dt = toDate(hms);
+      if (rest.indexOf("TRANSACTION START") !== -1) {
+        cur = { startTime: dt, endTime: null, card: null, amountRaw: null, failed: false, failReason: null, errors: [], cdmCode: null, cdmDecoded: null, sourceFile: filename, startLine: i };
+        continue;
+      }
+      if (!cur) continue;
+      var mt2 = rest.match(/^TRACK 2 DATA:\s*(.*)$/);
+      if (mt2 && mt2[1]) cur.card = mt2[1].trim();
+      var mCd = rest.match(/^CARD\(([^)]*)\)\s*TAKEN/);
+      if (mCd && mCd[1] && !cur.card) cur.card = mCd[1];
+      var mAmt = rest.match(/^AMOUNT\s+(\d+)\s+ENTERED/);
+      if (mAmt) cur.amountRaw = parseInt(mAmt[1], 10);
+      if (/^CDM ERROR:/.test(rest)) {
+        cur.failed = true;
+        cur.cdmCode = rest.replace("CDM ERROR:", "").trim();
+        cur.cdmDecoded = decodeCdmCode(cur.cdmCode.split(/\s+/));
+        if (!cur.failReason) cur.failReason = "помилка диспенсера";
+      }
+      var mFail = rest.match(/TRANSACTION\s+(\d+)\s+FAILED/);
+      if (mFail) { cur.failed = true; if (!cur.failReason) cur.failReason = "банкомат позначив транзакцію як невдалу"; }
+      // будь-яка інша розпізнана помилка всередині сесії, що впливає на
+      // готівку (ретракт, затор, збій видачі, обрив зв'язку), теж робить
+      // сесію збійною — раніше враховувались лише CDM ERROR і TRANSACTION FAILED
+      var sRule = matchLogEvent(rest);
+      if (sRule && sRule.cash && sRule.sev !== "info") {
+        cur.failed = true;
+        if (!cur.failReason) cur.failReason = sRule.label.toLowerCase();
+        if (cur.errors.indexOf(sRule.label) === -1) cur.errors.push(sRule.label);
+      }
+      if (rest.indexOf("TRANSACTION END") !== -1) {
+        cur.endTime = dt;
+        sessions.push(cur);
+        cur = null;
+      }
+    }
+    return sessions;
+  }
+  // "Період : DD.MM.YYYY HH:MM:SS - DD.MM.YYYY HH:MM:SS" from the host xlsx —
+  // the cycle's exact bounds. Daily device-log files cover full calendar
+  // days, so without this filter a multi-day cycle picks up neighbouring
+  // cycles' transactions from the boundary days as false anomalies.
+  function parseHostPeriod(meta) {
+    function parseOne(s) {
+      var m = s && s.match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+      if (!m) return null;
+      return new Date(Date.UTC(+m[3], (+m[2]) - 1, +m[1], +m[4], +m[5], +m[6]));
+    }
+    var from = parseOne(meta.periodFrom), to = parseOne(meta.periodTo);
+    if (!from || !to) return null;
+    return { from: from, to: to };
+  }
+  function inPeriod(date, period) {
+    if (!period) return true;
+    return date >= period.from && date <= period.to;
+  }
+  // Host xlsx cells are ISO-shaped but carry NO timezone ("2026-04-17T11:30:11.000").
+  // `new Date(...)` on a string like that is parsed as the BROWSER'S LOCAL time
+  // per spec — which silently shifts every host timestamp relative to the
+  // period bounds and device receipts (both built with explicit Date.UTC).
+  // Parse the wall-clock digits directly into a UTC instant instead, so all
+  // three time sources share the same (non-timezone-converted) clock.
+  function parseHostDateTime(iso) {
+    var m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+    if (!m) return new Date(NaN);
+    return new Date(Date.UTC(+m[1], (+m[2]) - 1, +m[3], +m[4], +m[5], +m[6]));
+  }
+
+  function last4Of(card) {
+    var m = String(card || "").match(/(\d{4})\s*$/);
+    return m ? m[1] : null;
+  }
+  function matchCycle(hostTxns, deviceReceipts, deviceSessions, period, windowSec) {
+    var cashReceipts = deviceReceipts.filter(function (r) { return isCashTag(r.tag) && inPeriod(r.dateTime, period); });
+    var receiptByRrn = {};
+    cashReceipts.forEach(function (r, i) { r._idx = i; receiptByRrn[r.rrn] = r; });
+    var sessionsInPeriod = deviceSessions.filter(function (s) { return inPeriod(s.startTime, period); });
+
+    var usedReceipt = {};   // by receipt._idx — a receipt can only satisfy one host row
+    var matched = [];       // { host, receipt } — confirmed by exact RRN match
+    var matchedFuzzy = [];  // { host, receipt, via, diffSec } — RRN didn't match, but auth
+                             // code+card+time, or card+time+amount, did — surfaced for
+                             // manual double-check rather than treated as a full anomaly
+    var matchedFailed = []; // { host, device } — no receipt, but a failed session with the same card+time was found
+    var hostOnly = [];      // host row with no receipt or session match at all
+
+    hostTxns.filter(function (h) { return inPeriod(parseHostDateTime(h.dateTime), period); }).forEach(function (h) {
+      var receipt = h.rrn && receiptByRrn[h.rrn];
+      if (receipt && !usedReceipt[receipt._idx]) { usedReceipt[receipt._idx] = true; matched.push({ host: h, receipt: receipt }); return; }
+
+      var hDate = parseHostDateTime(h.dateTime);
+      var hLast4 = last4Of(h.card);
+      var hAuth = String(h.authCode || "").trim().toUpperCase();
+
+      // tier 2: RRN didn't match (missing/typo/format), but the auth code,
+      // card and time all line up within the window — same operation, just
+      // recorded with a different RRN spelling on one side.
+      var best2 = null, best2Diff = Infinity;
+      if (hAuth && hLast4) {
+        cashReceipts.forEach(function (r) {
+          if (usedReceipt[r._idx]) return;
+          if (String(r.authCode || "").trim().toUpperCase() !== hAuth) return;
+          if (r.last4 !== hLast4) return;
+          var diff = Math.abs(r.dateTime - hDate) / 1000;
+          if (diff <= windowSec && diff < best2Diff) { best2 = r; best2Diff = diff; }
+        });
+      }
+      if (best2) { usedReceipt[best2._idx] = true; matchedFuzzy.push({ host: h, receipt: best2, diffSec: best2Diff, via: "код авторизації, картка і час" }); return; }
+
+      // tier 3: auth code also missing/mismatched — fall back to card +
+      // time proximity + exact amount match.
+      var best3 = null, best3Diff = Infinity;
+      if (hLast4) {
+        cashReceipts.forEach(function (r) {
+          if (usedReceipt[r._idx]) return;
+          if (r.last4 !== hLast4) return;
+          if (Math.abs(r.amount - h.amount) > 0.01) return;
+          var diff = Math.abs(r.dateTime - hDate) / 1000;
+          if (diff <= windowSec && diff < best3Diff) { best3 = r; best3Diff = diff; }
+        });
+      }
+      if (best3) { usedReceipt[best3._idx] = true; matchedFuzzy.push({ host: h, receipt: best3, diffSec: best3Diff, via: "картка, час і сума" }); return; }
+
+      // tier 3b: cardless/QR withdrawals print a receipt with no card mask
+      // at all, and its "RRN" slot doesn't reliably line up with the host's
+      // RRN either — the only usable signal left is amount + time.
+      var best3b = null, best3bDiff = Infinity;
+      cashReceipts.forEach(function (r) {
+        if (usedReceipt[r._idx]) return;
+        if (r.last4) return; // has a card — tiers 2/3 already covered it
+        if (Math.abs(r.amount - h.amount) > 0.01) return;
+        var diff = Math.abs(r.dateTime - hDate) / 1000;
+        if (diff <= windowSec && diff < best3bDiff) { best3b = r; best3bDiff = diff; }
+      });
+      if (best3b) { usedReceipt[best3b._idx] = true; matchedFuzzy.push({ host: h, receipt: best3b, diffSec: best3bDiff, via: "сума і час (безкарткова видача)" }); return; }
+
+      // tier 4: no receipt at all lines up — look for a device session
+      // (usually a failed dispense that never reached the receipt-printing
+      // step) by card + time proximity
+      var hKey = cardKeyOf(h.card);
+      var best = null, bestDiff = Infinity;
+      sessionsInPeriod.forEach(function (d) {
+        var dKey = cardKeyOf(d.card);
+        if (!hKey || !dKey || hKey !== dKey) return;
+        var diff = Math.abs((d.endTime || d.startTime) - hDate) / 1000;
+        if (diff <= windowSec && diff < bestDiff) { best = d; bestDiff = diff; }
+      });
+      if (best && best.failed) { matchedFailed.push({ host: h, device: best, diffSec: bestDiff }); }
+      else { hostOnly.push(h); }
+    });
+
+    var deviceOnly = cashReceipts.filter(function (r) { return !usedReceipt[r._idx]; });
+
+    // A matched RRN only proves the host approved the withdrawal and the ATM
+    // printed a receipt for it — not that the cash was actually handed over.
+    // Flag matches (exact-RRN or fuzzy) whose receipt never logged CASH TAKEN.
+    var unconfirmed = matched.concat(matchedFuzzy).filter(function (m) {
+      return !(m.receipt.confirm && m.receipt.confirm.taken);
+    });
+
+    return { matched: matched, matchedFuzzy: matchedFuzzy, matchedFailed: matchedFailed, hostOnly: hostOnly, deviceOnly: deviceOnly, unconfirmed: unconfirmed };
+  }
+
+  var SEV_LABEL = { critical: "Критично", warning: "Увага", info: "Інфо", ok: "Знайдено" };
+  var els = {};
+  [
+    "resetBtn", "reconXlsxDropzone", "reconXlsxStatus", "reconXlsxInput", "reconLogDropzone",
+    "reconLogStatus", "reconLogInput", "reconRunBtn", "reconErrBox", "reconCoverage",
+    "reconShortage", "reconShortageAmt", "reconShortageNote", "reconStatsWrap", "reconStatsBar",
+    "reconFindingsHead", "reconFindingsCount", "reconFindingsList", "reconEventsBlock", "reconCauseSection",
+    "reconCauseDir", "reconCauseAmount", "reconCauseTol", "reconCauseBtn", "reconCauseResult", "reconExportBtn",
+    "traceDropzone", "traceInput", "traceStatus", "traceRunBtn", "traceErrBox", "traceOverview",
+    "traceStatsWrap", "traceStatsBar", "traceBalance", "traceEpisodes", "traceEventsBlock",
+    "traceExportRow", "traceExportBtn"
+  ].forEach(function (id) { els[id] = document.getElementById(id); });
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  if (els.resetBtn) els.resetBtn.addEventListener("click", function () { location.reload(); });
+
+  // ---------------------------------------------------------------
+  // Cycle reconciliation — wiring and rendering
+  // ---------------------------------------------------------------
+  var reconState = { xlsxFile: null, logFiles: [] };
+  var lastFindings = [];
+  var lastCross = null;
+
+  function fmtUAH(n) {
+    var s = Math.round(n).toString();
+    var sign = "";
+    if (s[0] === "-") { sign = "-"; s = s.slice(1); }
+    var grouped = s.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return sign + grouped + " грн";
+  }
+  function fmtDateTime(d) {
+    if (!(d instanceof Date) || isNaN(d)) return "—";
+    var p = function (n) { return String(n).padStart(2, "0"); };
+    return p(d.getUTCDate()) + "." + p(d.getUTCMonth() + 1) + "." + d.getUTCFullYear() + " " +
+      p(d.getUTCHours()) + ":" + p(d.getUTCMinutes()) + ":" + p(d.getUTCSeconds());
+  }
+  function fmtHostDT(iso) {
+    var m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+    if (!m) return String(iso);
+    return m[3] + "." + m[2] + "." + m[1] + " " + m[4] + ":" + m[5] + ":" + m[6];
+  }
+
+  function updateReconRunEnabled() {
+    els.reconRunBtn.disabled = !(reconState.xlsxFile && reconState.logFiles.length);
+  }
+
+  function reconShowError(msg) {
+    els.reconErrBox.textContent = msg;
+    els.reconErrBox.style.display = "block";
+  }
+  function reconClearError() {
+    els.reconErrBox.style.display = "none";
+    els.reconErrBox.textContent = "";
+  }
+
+  els.reconXlsxDropzone.addEventListener("click", function () { els.reconXlsxInput.click(); });
+  els.reconXlsxDropzone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.reconXlsxInput.click(); }
+  });
+  els.reconXlsxDropzone.addEventListener("dragover", function (e) { e.preventDefault(); els.reconXlsxDropzone.classList.add("drag"); });
+  els.reconXlsxDropzone.addEventListener("dragleave", function () { els.reconXlsxDropzone.classList.remove("drag"); });
+  els.reconXlsxDropzone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    els.reconXlsxDropzone.classList.remove("drag");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      reconState.xlsxFile = e.dataTransfer.files[0];
+      els.reconXlsxStatus.textContent = reconState.xlsxFile.name;
+      els.reconXlsxDropzone.classList.add("filled");
+      updateReconRunEnabled();
+    }
+  });
+  els.reconXlsxInput.addEventListener("change", function () {
+    if (els.reconXlsxInput.files && els.reconXlsxInput.files[0]) {
+      reconState.xlsxFile = els.reconXlsxInput.files[0];
+      els.reconXlsxStatus.textContent = reconState.xlsxFile.name;
+      els.reconXlsxDropzone.classList.add("filled");
+      updateReconRunEnabled();
+    }
+  });
+
+  els.reconLogDropzone.addEventListener("click", function () { els.reconLogInput.click(); });
+  els.reconLogDropzone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.reconLogInput.click(); }
+  });
+  els.reconLogDropzone.addEventListener("dragover", function (e) { e.preventDefault(); els.reconLogDropzone.classList.add("drag"); });
+  els.reconLogDropzone.addEventListener("dragleave", function () { els.reconLogDropzone.classList.remove("drag"); });
+  function setReconLogFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    reconState.logFiles = files;
+    els.reconLogStatus.textContent = files.length === 1 ? files[0].name : files.length + " файлів обрано";
+    els.reconLogDropzone.classList.add("filled");
+    updateReconRunEnabled();
+  }
+  els.reconLogDropzone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    els.reconLogDropzone.classList.remove("drag");
+    setReconLogFiles(e.dataTransfer.files);
+  });
+  els.reconLogInput.addEventListener("change", function () { setReconLogFiles(els.reconLogInput.files); });
+
+  // partition host-only into "true anomaly" (date covered by an uploaded
+  // log) vs "uncovered" (that date's log simply wasn't provided)
+  function partitionHostOnly(hostOnly, coveredDates) {
+    var trueHostOnly = [], uncoveredHostOnly = [];
+    hostOnly.forEach(function (h) {
+      var d = String(h.dateTime).slice(0, 10);
+      (coveredDates[d] ? trueHostOnly : uncoveredHostOnly).push(h);
+    });
+    return { trueHostOnly: trueHostOnly, uncoveredHostOnly: uncoveredHostOnly };
+  }
+
+  // ---------------------------------------------------------------
+  // Зіставлення кількості операцій за трьома джерелами: траса диспенсера,
+  // журнал банкомата (квитанції видачі) і журнал процесингу. Кожне джерело
+  // рахує видачі незалежно, тому розбіжність у кількості — сама по собі
+  // сигнал: одна операція десь не дорахована. У трасі немає ні картки, ні
+  // RRN, тому зіставляти можна лише за сумою й часом; збіг шукається
+  // жадібно, від найближчого за часом.
+  // ---------------------------------------------------------------
+  function crossSourceCounts(traceDisp, receipts, hostTxns, windowSec) {
+    var usedR = {}, usedH = {};
+    function nearest(list, used, when, amount, timeOf, amountOf) {
+      var best = -1, bestDiff = 1e12;
+      list.forEach(function (x, i) {
+        if (used[i]) return;
+        if (Math.abs(amountOf(x) - amount) >= 0.01) return;
+        var diff = Math.abs(timeOf(x).getTime() - when.getTime());
+        if (diff <= windowSec * 1000 && diff < bestDiff) { bestDiff = diff; best = i; }
+      });
+      return best;
+    }
+    var rows = traceDisp.map(function (d) {
+      var ri = nearest(receipts, usedR, d.time, d.amount,
+        function (r) { return r.dateTime; }, function (r) { return r.amount; });
+      if (ri >= 0) usedR[ri] = true;
+      var hi = nearest(hostTxns, usedH, d.time, d.amount,
+        function (h) { return parseHostDateTime(h.dateTime); }, function (h) { return h.amount; });
+      if (hi >= 0) usedH[hi] = true;
+      return { disp: d, receipt: ri >= 0 ? receipts[ri] : null, host: hi >= 0 ? hostTxns[hi] : null };
+    });
+    return {
+      counts: { trace: traceDisp.length, atm: receipts.length, host: hostTxns.length },
+      rows: rows,
+      traceOnly: rows.filter(function (r) { return !r.receipt && !r.host; }),
+      traceNoAtm: rows.filter(function (r) { return !r.receipt && r.host; }),
+      traceNoHost: rows.filter(function (r) { return r.receipt && !r.host; }),
+      atmOnly: receipts.filter(function (r, i) { return !usedR[i]; }),
+      hostOnly: hostTxns.filter(function (h, i) { return !usedH[i]; })
+    };
+  }
+  function dispText(d) {
+    return fmtDateTime(d.time) + " — " + fmtUAH(d.amount) + " (" +
+      d.items.map(function (it) { return "касета " + it.no + ": " + it.notes + " шт. × " + it.value; }).join(", ") + ")";
+  }
+
+  function renderReconciliation(hostMeta, hostTxns, deviceReceiptsCount, deviceSessionsCount, coveredDates, period, matchResult, traceSummary, declinedTxns, deviceReceipts) {
+    declinedTxns = declinedTxns || [];
+    deviceReceipts = deviceReceipts || [];
+    var partition = partitionHostOnly(matchResult.hostOnly, coveredDates);
+    var trueHostOnly = partition.trueHostOnly, uncoveredHostOnly = partition.uncoveredHostOnly;
+
+    // ---- coverage note ----
+    var coveredList = Object.keys(coveredDates).sort();
+    var uncoveredDatesSet = {};
+    uncoveredHostOnly.forEach(function (h) { uncoveredDatesSet[String(h.dateTime).slice(0, 10)] = true; });
+    var uncoveredList = Object.keys(uncoveredDatesSet).sort();
+    var covHtml = coveredList.length
+      ? "Завантажено логи АТМ за " + coveredList.length + " дн. (" + coveredList.join(", ") + ")."
+      : "Журналів банкомата (.JRN) не завантажено — зіставити конкретні операції з квитанціями видачі нема з чим.";
+    if (period) {
+      covHtml += " Аналіз обмежено періодом циклу з журналу: " + esc(hostMeta.periodFrom) + " – " + esc(hostMeta.periodTo) +
+        " — операції та сесії поза цим періодом (сусідні цикли в тих самих денних логах) у звірку не потрапляють.";
+    } else {
+      covHtml += " Період циклу в журналі не розпізнано — звірка йде без обмеження за часом, можливі хибні знахідки з сусідніх циклів.";
+    }
+    if (uncoveredList.length) {
+      covHtml += " За " + uncoveredList.length + " дн. циклу лог не завантажено (" + uncoveredList.join(", ") + ") — " +
+        uncoveredHostOnly.length + " операцій цих днів не звірялись (не аномалія, а прогалина у вхідних даних).";
+    }
+    covHtml += " Основний спосіб зіставлення — точний збіг RRN операції з квитанцією видачі (CASH_WITHDRAWAL чи безкарткова CARDLESS_CASH_WITHDRAWAL) у лозі АТМ. " +
+      "Якщо за RRN збігу немає, додатково перевіряються код авторизації + картка + час, потім картка + час + сума, а для безкарткових видач (без картки в квитанції) — сума + час; " +
+      "такі знахідки позначені окремо як «зіставлено за резервними ознаками» і варто звірити їх вручну. " +
+      "Картка та час без суми чи коду використовуються лише як останній резерв, щоб підтягнути причину відмови, коли жодної квитанції видачі немає. " +
+      "Крім того, для кожної зіставленої квитанції перевіряється, чи є в лозі підтвердження CASH TAKEN (готівку фізично забрано) — його відсутність позначається окремо, навіть якщо RRN збігся.";
+    if (matchResult.matchedFuzzy.length) {
+      covHtml += " Зіставлено за резервними ознаками (не за RRN): " + matchResult.matchedFuzzy.length + " опер. — перевірте ці випадки вручну.";
+    }
+    if (declinedTxns.length) {
+      covHtml += " У журналі розпізнано два блоки: " + hostTxns.length + " оброблених операцій і " +
+        declinedTxns.length + " відмовлених. Відмовлених у логах банкомата бути не повинно, тому вони у звірку не йдуть — для них перевіряється протилежне: чи не було по них фізичної видачі.";
+    }
+    if (hostMeta.sectionCheck && hostMeta.sectionCheck.length) {
+      var bad = hostMeta.sectionCheck.filter(function (x) { return !x.ok; });
+      covHtml += bad.length
+        ? " <strong>Увага:</strong> підсумкові рядки файлу не збігаються з розбором — " +
+          bad.map(function (x) { return "«" + esc(x.text) + "» заявлено " + x.declared + ", розібрано " + x.parsed; }).join("; ") +
+          ". Перевірте структуру файлу."
+        : " Розбір звірено з підсумковими рядками файлу: " +
+          hostMeta.sectionCheck.map(function (x) { return "«" + esc(x.text) + "» — " + x.parsed; }).join(", ") + ".";
+    }
+    if (traceSummary) {
+      var trDates = Object.keys(traceSummary.dates).sort();
+      covHtml += " Додатково завантажено логів трасування диспенсера: " + traceSummary.files +
+        " (дати: " + trDates.join(", ") + "). Траса показує фізичний рух купюр у диспенсері й не містить карток чи RRN, " +
+        "тому вона не використовується для зіставлення конкретних операцій — з неї беруться суми фактично виданого та помилки самого диспенсера.";
+    }
+    els.reconCoverage.innerHTML = covHtml;
+    els.reconCoverage.style.display = "block";
+
+    // ---- stats ----
+    // ---- звірка кількості операцій за трьома джерелами ----
+    var cross = null;
+    if (traceSummary) {
+      var trIn2 = traceSummary.dispenses.filter(function (d) { return !d.test && inPeriod(d.time, period); });
+      var recIn = deviceReceipts.filter(function (r) { return isCashTag(r.tag) && inPeriod(r.dateTime, period); });
+      var hostIn = hostTxns.filter(function (h) { return inPeriod(parseHostDateTime(h.dateTime), period) && h.amount > 0; });
+      cross = crossSourceCounts(trIn2, recIn, hostIn, 180);
+    }
+
+    var tiles = [
+      ["АТМ", hostMeta.atmId || "—"],
+      ["Цикл", hostMeta.cycle || "—"],
+      ["Операцій у журналі", hostTxns.length],
+      ["Видач за квитанціями АТМ", deviceReceiptsCount],
+      ["Зіставлено за RRN", matchResult.matched.length],
+      ["Зіставлено за резервними ознаками", matchResult.matchedFuzzy.length],
+      ["Немає в логах АТМ", trueHostOnly.length],
+      ["Немає в журналі", matchResult.deviceOnly.length],
+      ["Збійних серед зіставлених", matchResult.matchedFailed.length],
+      ["Без підтвердження CASH TAKEN", matchResult.unconfirmed.length]
+    ];
+    if (declinedTxns.length) tiles.splice(3, 0, ["Відмовлених у журналі", declinedTxns.length]);
+    if (cross) tiles.push(["Операцій: траса / лог / журнал",
+      cross.counts.trace + " / " + cross.counts.atm + " / " + cross.counts.host]);
+    if (traceSummary) {
+      var trIn = traceSummary.dispenses.filter(function (d) { return inPeriod(d.time, period); });
+      var trReal = trIn.filter(function (d) { return !d.test; });
+      var trTest = trIn.filter(function (d) { return d.test; });
+      tiles.push(["Видач за трасою диспенсера", trReal.length]);
+      tiles.push(["Сума видач за трасою", fmtUAH(trReal.reduce(function (a, d) { return a + d.amount; }, 0))]);
+      if (traceSummary.counts.retract) tiles.push(["Ретрактів за трасою", traceSummary.counts.retract]);
+      if (trTest.length) tiles.push(["Тестових видач", trTest.length]);
+      if (traceSummary.rejectedNotes) tiles.push(["Забраковано купюр", traceSummary.rejectedNotes]);
+    }
+    els.reconStatsBar.innerHTML = tiles.map(function (t) {
+      return '<div class="stat"><div class="k">' + esc(t[0]) + '</div><div class="v">' + esc(t[1]) + "</div></div>";
+    }).join("");
+    els.reconStatsWrap.style.display = "block";
+
+    // ---- shortage estimate ----
+    var shortageSum = trueHostOnly.reduce(function (a, h) { return a + h.amount; }, 0) +
+      matchResult.matchedFailed.reduce(function (a, m) { return a + m.host.amount; }, 0) +
+      matchResult.unconfirmed.reduce(function (a, m) { return a + m.host.amount; }, 0);
+    var excessSum = matchResult.deviceOnly.reduce(function (a, d) { return a + d.amount; }, 0);
+    if (shortageSum > 0 || excessSum > 0) {
+      var parts = [];
+      if (shortageSum > 0) parts.push(fmtUAH(shortageSum) + " можливої недостачі (" + (trueHostOnly.length + matchResult.matchedFailed.length + matchResult.unconfirmed.length) + " опер.)");
+      if (excessSum > 0) parts.push(fmtUAH(excessSum) + " можливого надлишку (" + matchResult.deviceOnly.length + " опер.)");
+      els.reconShortageAmt.textContent = parts.join(" · ");
+      els.reconShortageNote.textContent = "Недостача — сума операцій, які журнал вважає успішними, але для яких немає підтвердженої квитанції видачі в логу АТМ (RRN не знайдено, сесія прямо фіксує помилку видачі, або квитанція є, але без підтвердження CASH TAKEN). " +
+        "Надлишок — квитанції видачі в лозі АТМ, для яких немає жодної операції з таким RRN у журналі. Це орієнтовна оцінка на основі знайдених аномалій, не підтверджена сума.";
+      els.reconShortage.style.display = "block";
+    } else {
+      els.reconShortage.style.display = "none";
+    }
+
+    // ---- findings ----
+    var findings = [];
+    if (cross) {
+      var c = cross.counts;
+      var same = c.trace === c.atm && c.atm === c.host;
+      var maxN = Math.max(c.trace, c.atm, c.host);
+      var extras = [];
+      if (cross.traceOnly.length) extras.push("у трасі " + cross.traceOnly.length + " видач(і) без відповідника в жодному з журналів");
+      if (cross.traceNoAtm.length) extras.push("у трасі " + cross.traceNoAtm.length + " видач(і) без квитанції в лозі АТМ");
+      if (cross.traceNoHost.length) extras.push("у трасі " + cross.traceNoHost.length + " видач(і) без операції в журналі процесингу");
+      if (cross.atmOnly.length) extras.push("у лозі АТМ " + cross.atmOnly.length + " квитанц(ій) видачі без видачі в трасі");
+      if (cross.hostOnly.length) extras.push("у журналі процесингу " + cross.hostOnly.length + " операц(ій) без видачі в трасі");
+      var disputed = cross.traceOnly.concat(cross.traceNoAtm, cross.traceNoHost);
+      findings.push({
+        severity: same && !disputed.length && !cross.atmOnly.length && !cross.hostOnly.length ? "info"
+          : (cross.traceOnly.length ? "critical" : "warning"),
+        title: same ? "Кількість операцій збігається за всіма трьома джерелами"
+          : "Кількість операцій за джерелами не збігається: траса " + c.trace + ", лог АТМ " + c.atm + ", журнал " + c.host,
+        time: "",
+        detail: "Видач за трасою диспенсера: " + c.trace + ". Квитанцій видачі в логах банкомата: " + c.atm +
+          ". Операцій видачі в журналі процесингу: " + c.host + "." +
+          (extras.length ? " Розходження: " + extras.join("; ") + "." : " Кожній видачі знайдено відповідник у двох інших джерелах.") +
+          (disputed.length
+            ? " Спірні операції в трасі: " + disputed.slice(0, 15).map(function (r) {
+                return dispText(r.disp) + " — " + (!r.receipt && !r.host ? "немає ні квитанції, ні операції"
+                  : (!r.receipt ? "немає квитанції в лозі АТМ" : "немає операції в журналі"));
+              }).join("; ") + (disputed.length > 15 ? " …та ще " + (disputed.length - 15) : "") + "."
+            : "") +
+          " Зіставлення виконано за сумою й часом (вікно 3 хвилини): у трасі немає ні номера картки, ні RRN, тому це орієнтир, а не доказ."
+      });
+    }
+    // Відмовлена операція не повинна мати фізичної видачі. Якщо поруч за
+    // часом і сумою є квитанція видачі чи команда диспенсера — готівка пішла
+    // клієнту без операції в журналі, і це пряма недостача.
+    // По відмовленій операції готівки бути не повинно взагалі. Тому шукаємо
+    // не збіг сум, а будь-який рух готівки поруч за часом, який не зіставлено
+    // з жодною успішною операцією: часткова видача до збою — типовий випадок,
+    // коли з касет уже вийняли частину купюр, а процесинг операцію відхилив.
+    declinedTxns.filter(function (h) { return inPeriod(parseHostDateTime(h.dateTime), period) && h.amount > 0; })
+      .forEach(function (h) {
+        var t = parseHostDateTime(h.dateTime).getTime();
+        var freeDisp = cross
+          ? cross.traceOnly.concat(cross.traceNoHost).map(function (r) { return r.disp; })
+          : (traceSummary ? traceSummary.dispenses.filter(function (d) { return !d.test; }) : []);
+        var disp = freeDisp.filter(function (d) { return Math.abs(d.time.getTime() - t) <= 300000; })
+          .sort(function (a, b) { return Math.abs(a.time - t) - Math.abs(b.time - t); })[0];
+        var rec = deviceReceipts.filter(function (r) {
+          return isCashTag(r.tag) && Math.abs(r.dateTime.getTime() - t) <= 300000 &&
+            (r.rrn === h.rrn || Math.abs(r.amount - h.amount) < 0.01);
+        })[0];
+        if (!rec && !disp) return;
+        var partial = disp && Math.abs(disp.amount - h.amount) >= 0.01;
+        findings.push({
+          severity: "critical",
+          title: partial
+            ? "Операція відмовлена в журналі, але в трасі є часткова видача"
+            : "Операція відмовлена в журналі, але в логах є фізична видача",
+          time: fmtHostDT(h.dateTime),
+          detail: "Журнал (блок відмовлених): " + fmtHostDT(h.dateTime) + ", картка " + esc(h.card) +
+            ", запитана сума " + fmtUAH(h.amount) + ", RRN " + esc(h.rrn) + "." +
+            (rec ? " У лозі АТМ є квитанція видачі о " + fmtDateTime(rec.dateTime) + " на " + fmtUAH(rec.amount) + " (RRN " + esc(rec.rrn) + ")." : "") +
+            (disp ? " У трасі диспенсера о " + fmtDateTime(disp.time) + " є видача на " + fmtUAH(disp.amount) +
+                    " (" + disp.items.map(function (it) { return "касета " + it.no + " — " + it.notes + " шт. × " + it.value; }).join(", ") +
+                    "), не зіставлена з жодною успішною операцією журналу." : "") +
+            (partial ? " Сума менша за запитану: схоже, з касет устигли вийняти частину купюр, після чого операцію відхилили. Саме ця сума й лишилась поза журналом." : "") +
+            " Перевірте касету реджекту й ретракту та фото-/відеофіксацію за цим часом."
+        });
+      });
+    if (traceSummary) {
+      var tIn = traceSummary.dispenses.filter(function (d) { return inPeriod(d.time, period); });
+      var tReal = tIn.filter(function (d) { return !d.test; });
+      var tTest = tIn.filter(function (d) { return d.test; });
+      var traceSum = tReal.reduce(function (a, d) { return a + d.amount; }, 0);
+      var testSum = tTest.reduce(function (a, d) { return a + d.amount; }, 0);
+      var hostSum = hostTxns.filter(function (h) {
+        return inPeriod(parseHostDateTime(h.dateTime), period) && h.amount > 0;
+      }).reduce(function (a, h) { return a + h.amount; }, 0);
+      var traceDiff = traceSum - hostSum;
+      findings.push({
+        severity: Math.abs(traceDiff) >= 1 ? "warning" : "info",
+        title: Math.abs(traceDiff) >= 1
+          ? "Сума фактично виданого за трасою не збігається з сумою операцій журналу"
+          : "Сума фактично виданого за трасою збігається з сумою операцій журналу",
+        time: "",
+        detail: "Траса диспенсера: " + tReal.length + " видач на " + fmtUAH(traceSum) +
+          " (сума рахується як кількість купюр × номінал касети за станом STCS). Журнал процесингу за той самий період: " +
+          fmtUAH(hostSum) + ". Різниця: " + fmtUAH(traceDiff) + "." +
+          (tTest.length ? " Окремо: " + tTest.length + " тестових видач на " + fmtUAH(testSum) + " — вони не мають операцій у журналі й, якщо купюри не повернули в касету, дають недостачу." : "") +
+          " Порівняння орієнтовне: у журналі можуть бути операції інших типів із сумою, а траса могла охоплювати не весь період циклу."
+      });
+    }
+    matchResult.matchedFailed.forEach(function (m) {
+      var d = m.device;
+      var reasonTxt;
+      if (d.cdmDecoded) {
+        var origin = d.cdmDecoded.known ? "за таблицею виробника"
+          : (d.cdmDecoded.inferred ? "припущення за шаблоном родини кодів" : "коду немає в перекладеній таблиці");
+        reasonTxt = " Код CDM " + d.cdmCode + " (" + origin + "): «" + d.cdmDecoded.info.reason + "» Дія: " + d.cdmDecoded.info.measure;
+      } else if (d.errors && d.errors.length) {
+        reasonTxt = " Помилки в логу під час сесії: " + d.errors.join("; ") + ".";
+      } else if (d.failReason) {
+        reasonTxt = " Причина за логом: " + d.failReason + ".";
+      } else {
+        reasonTxt = " Причину помилки в логу не деталізовано.";
+      }
+      findings.push({
+        severity: "critical",
+        title: "Успішна за журналом операція, але АТМ зафіксував помилку видачі",
+        time: fmtHostDT(m.host.dateTime),
+        detail: "Журнал: " + fmtHostDT(m.host.dateTime) + ", картка " + esc(m.host.card) + ", сума " + fmtUAH(m.host.amount) +
+          ", RRN " + esc(m.host.rrn) + ". Лог АТМ (" + esc(d.sourceFile) + "): сесія " + fmtDateTime(d.startTime) + "–" + fmtDateTime(d.endTime) +
+          " (картка+час, квитанції видачі немає) завершилась з помилкою видачі." + reasonTxt
+      });
+    });
+    var unconfirmedSet = {};
+    matchResult.unconfirmed.forEach(function (m) { unconfirmedSet[m.receipt._idx] = true; });
+    matchResult.matchedFuzzy.forEach(function (m) {
+      var isUnconfirmed = unconfirmedSet[m.receipt._idx];
+      var crashNote = (m.receipt.confirm && m.receipt.confirm.crashedNearby
+        ? " Одразу після квитанції в логу зафіксовано збій/перезапуск АТМ — готівка могла залишитись у диспенсері." : "") +
+        (m.receipt.confirm && m.receipt.confirm.retracted
+          ? " У межах цієї ж транзакції в логу є ретракт — купюри втягнуто назад у банкомат, тож фізично клієнт їх не отримав." : "");
+      findings.push({
+        severity: isUnconfirmed ? "critical" : "info",
+        title: isUnconfirmed
+          ? "Зіставлено за резервними ознаками, і АТМ не підтвердив видачу готівки (немає CASH TAKEN)"
+          : "Зіставлено за резервними ознаками, а не за RRN — перевірте вручну",
+        time: fmtHostDT(m.host.dateTime),
+        detail: "Журнал: " + fmtHostDT(m.host.dateTime) + ", картка " + esc(m.host.card) + ", код авторизації " + esc(m.host.authCode) +
+          ", RRN " + esc(m.host.rrn) + ", сума " + fmtUAH(m.host.amount) + ". Лог АТМ (" + esc(m.receipt.sourceFile) + "): квитанція видачі о " +
+          fmtDateTime(m.receipt.dateTime) + ", картка …" + esc(m.receipt.last4 || "немає (безкарткова)") + ", код " + esc(m.receipt.authCode || "—") + "/" + esc(m.receipt.rrn) +
+          ", сума " + fmtUAH(m.receipt.amount) + ". RRN не збігається, зіставлено за: " + m.via + " (різниця в часі " + Math.round(m.diffSec) + " с)." +
+          (isUnconfirmed ? " У логу немає підтвердження CASH TAKEN після квитанції." + crashNote : "")
+      });
+    });
+    matchResult.unconfirmed.forEach(function (m) {
+      if (matchResult.matchedFuzzy.indexOf(m) !== -1) return; // already reported above with fuzzy-match detail
+      var crashNote = (m.receipt.confirm && m.receipt.confirm.crashedNearby
+        ? " Одразу після квитанції в логу зафіксовано збій/перезапуск АТМ — готівка могла залишитись у диспенсері (ризик недостачі) або не видана коректно." : "") +
+        (m.receipt.confirm && m.receipt.confirm.retracted
+          ? " У межах цієї ж транзакції в логу є ретракт — купюри втягнуто назад у банкомат, тож фізично клієнт їх не отримав." : "");
+      findings.push({
+        severity: "critical",
+        title: "Операція зіставлена за RRN, але АТМ не підтвердив видачу готівки",
+        time: fmtHostDT(m.host.dateTime),
+        detail: "Журнал: " + fmtHostDT(m.host.dateTime) + ", картка " + esc(m.host.card) + ", сума " + fmtUAH(m.host.amount) + ", RRN " + esc(m.host.rrn) +
+          ". Лог АТМ (" + esc(m.receipt.sourceFile) + "): квитанція з тим самим RRN надрукована о " + fmtDateTime(m.receipt.dateTime) +
+          ", але в логу немає CASH TAKEN (готівку фізично не підтверджено видано)." + crashNote
+      });
+    });
+    trueHostOnly.forEach(function (h) {
+      findings.push({
+        severity: "critical",
+        title: "Операція є в журналі, але відсутня в логах АТМ",
+        time: fmtHostDT(h.dateTime),
+        detail: "Журнал: " + fmtHostDT(h.dateTime) + ", картка " + esc(h.card) + ", сума " + fmtUAH(h.amount) + ", RRN " + esc(h.rrn) +
+          ", деталізація " + esc(h.detail) + ". У жодному завантаженому логу АТМ (за цю дату лог є) немає ні квитанції видачі з таким RRN, ні сесії з такою карткою поблизу за часом. " +
+          "Можливі причини: готівку видано без коректного запису в лог пристрою, або сесія в логу мала іншу картку через збій зчитувача."
+      });
+    });
+    matchResult.deviceOnly.forEach(function (d) {
+      findings.push({
+        severity: "warning",
+        title: "Квитанція видачі в логу АТМ без відповідної операції в журналі",
+        time: fmtDateTime(d.dateTime),
+        detail: "Лог АТМ (" + esc(d.sourceFile) + "): видача о " + fmtDateTime(d.dateTime) + ", картка …" + esc(d.last4) +
+          ", сума " + fmtUAH(d.amount) + ", код " + esc(d.authCode) + "/" + esc(d.rrn) +
+          ". У журналі процесингу немає операції з таким RRN у межах періоду циклу — перевірте, чи це не готівка, видана без підтвердження хоста (ризик надлишку)."
+      });
+    });
+
+    var order = { critical: 0, warning: 1, info: 2 };
+    findings.sort(function (a, b) { return order[a.severity] - order[b.severity]; });
+
+    lastFindings = findings;
+    lastCross = cross;
+    els.reconFindingsCount.textContent = "(" + findings.length + ")";
+    els.reconFindingsHead.style.display = "flex";
+    if (!findings.length) {
+      els.reconFindingsList.innerHTML = '<div class="finding sev-info"><div class="stripe"></div><div class="finding-body">' +
+        '<div class="finding-top"><span class="sev-badge">Інфо</span></div><h5>Аномалій не знайдено</h5>' +
+        "<p>Усі операції журналу за період циклу зіставлені за RRN з квитанціями видачі в логах АТМ, зайвих квитанцій немає.</p></div></div>";
+      return;
+    }
+    els.reconFindingsList.innerHTML = findings.map(function (f) {
+      return '<div class="finding sev-' + f.severity + '"><div class="stripe"></div><div class="finding-body">' +
+        '<div class="finding-top"><span class="sev-badge">' + SEV_LABEL[f.severity] + '</span><span class="finding-time">' + esc(f.time) + "</span></div>" +
+        "<h5>" + esc(f.title) + "</h5><p>" + esc(f.detail) + "</p></div></div>";
+    }).join("");
+  }
+
+  // ---------------------------------------------------------------
+  // Targeted cause search: given a shortage/surplus amount from the cash
+  // count, look for one operation or a small combination of the
+  // already-detected anomalies that sums to it, and surface any risk
+  // events (comm loss, reboot, low cassette, off-window service) nearby.
+  // ---------------------------------------------------------------
+  function buildCauseCandidates(direction, trueHostOnly, matchedFailed, deviceOnly, unconfirmed) {
+    var list = [];
+    if (direction === "shortage") {
+      matchedFailed.forEach(function (m) {
+        list.push({
+          amount: m.host.amount,
+          time: parseHostDateTime(m.host.dateTime),
+          label: "Успішна за журналом, АТМ зафіксував помилку видачі",
+          detail: fmtHostDT(m.host.dateTime) + ", картка " + m.host.card + ", RRN " + m.host.rrn + ", сума " + fmtUAH(m.host.amount)
+        });
+      });
+      trueHostOnly.forEach(function (h) {
+        list.push({
+          amount: h.amount,
+          time: parseHostDateTime(h.dateTime),
+          label: "Є в журналі, немає в логах АТМ",
+          detail: fmtHostDT(h.dateTime) + ", картка " + h.card + ", RRN " + h.rrn + ", сума " + fmtUAH(h.amount)
+        });
+      });
+      (unconfirmed || []).forEach(function (m) {
+        list.push({
+          amount: m.host.amount,
+          time: parseHostDateTime(m.host.dateTime),
+          label: "Зіставлено, але АТМ не підтвердив видачу (немає CASH TAKEN)",
+          detail: fmtHostDT(m.host.dateTime) + ", картка " + m.host.card + ", RRN " + m.host.rrn + ", сума " + fmtUAH(m.host.amount)
+        });
+      });
+    } else {
+      deviceOnly.forEach(function (d) {
+        list.push({
+          amount: d.amount,
+          time: d.dateTime,
+          label: "Квитанція видачі в лозі АТМ без операції в журналі",
+          detail: fmtDateTime(d.dateTime) + ", картка …" + d.last4 + ", код " + d.authCode + "/" + d.rrn + ", сума " + fmtUAH(d.amount)
+        });
+      });
+    }
+    return list;
+  }
+  function findAmountCombos(candidates, target, tolerance, maxItems) {
+    var lo = target - tolerance, hi = target + tolerance;
+    var results = [];
+    var nodeBudget = 200000;
+    var sorted = candidates.map(function (c, i) { return i; }).sort(function (a, b) { return candidates[b].amount - candidates[a].amount; });
+    function backtrack(pos, chosen, sum) {
+      if (nodeBudget-- <= 0 || results.length >= 25) return;
+      if (chosen.length && sum >= lo && sum <= hi) results.push(chosen.slice());
+      if (pos >= sorted.length || chosen.length >= maxItems || sum > hi) return;
+      chosen.push(sorted[pos]);
+      backtrack(pos + 1, chosen, sum + candidates[sorted[pos]].amount);
+      chosen.pop();
+      backtrack(pos + 1, chosen, sum);
+    }
+    backtrack(0, [], 0);
+    results.sort(function (a, b) {
+      if (a.length !== b.length) return a.length - b.length;
+      var sa = a.reduce(function (s, i) { return s + candidates[i].amount; }, 0);
+      var sb = b.reduce(function (s, i) { return s + candidates[i].amount; }, 0);
+      return Math.abs(sa - target) - Math.abs(sb - target);
+    });
+    return results;
+  }
+  function renderCauseCombos(combos, candidates, target, tolerance, riskEvents) {
+    if (!combos.length) {
+      return '<div class="finding sev-warning"><div class="stripe"></div><div class="finding-body">' +
+        '<div class="finding-top"><span class="sev-badge">' + SEV_LABEL.warning + '</span></div>' +
+        "<h5>Точного збігу не знайдено</h5>" +
+        "<p>Серед уже виявлених аномалій циклу немає операції чи комбінації операцій, що в сумі дають " + esc(fmtUAH(target)) + " (± " + esc(fmtUAH(tolerance)) + "). Перегляньте технічні події нижче — можливо, причина не повʼязана з конкретною операцією, а стосується обриву звʼязку, вимкнення чи інкасації.</p></div></div>";
+    }
+    return combos.slice(0, 8).map(function (idxArr) {
+      var items = idxArr.map(function (i) { return candidates[i]; });
+      var sum = items.reduce(function (s, c) { return s + c.amount; }, 0);
+      var diff = sum - target;
+      var itemsHtml = items.map(function (c) {
+        var near = nearbyRiskEvents(c.time, riskEvents, 300);
+        var noteTxt = near.length ? " Поруч за часом: " + near.map(riskEventLabel).join("; ") + "." : "";
+        return "— " + c.label + ": " + c.detail + "." + noteTxt;
+      }).join(" ");
+      return '<div class="finding sev-ok"><div class="stripe"></div><div class="finding-body">' +
+        '<div class="finding-top"><span class="sev-badge">' + SEV_LABEL.ok + '</span></div>' +
+        "<h5>" + (items.length === 1 ? "Одна операція" : "Комбінація з " + items.length + " операцій") + " на суму " + esc(fmtUAH(sum)) +
+        (Math.abs(diff) >= 0.5 ? " (різниця з введеною сумою: " + esc(fmtUAH(diff)) + ")" : "") + "</h5>" +
+        "<p>" + esc(itemsHtml) + "</p></div></div>";
+    }).join("");
+  }
+  function renderCauseEvents(riskEvents, period) {
+    var visible = riskEvents.filter(function (e) { return e.type !== "service" || !isBoundaryService(e, period); })
+      .sort(function (a, b) { return a.time - b.time; });
+    if (!visible.length) {
+      return '<p class="recon-lead" style="margin-top:16px;">Технічних подій і помилок (обриви звʼязку, вимкнення, помилки диспенсера, ретракти, затори, майже порожні касети, позапланове відкриття сейфа), які могли б пояснити розбіжність, у межах періоду циклу не знайдено.</p>';
+    }
+    return '<div class="section-head" style="margin-top:22px;"><h4>Технічні події та помилки в логах <span style="color:var(--muted); font-weight:400;">(' + visible.length + ")</span></h4></div>" +
+      '<div class="findings">' + visible.map(function (e) {
+        var sev = e.sev || (e.type === "reboot" && e.illegal ? "critical" : (e.type === "reboot" ? "info" : "warning"));
+        return '<div class="finding sev-' + sev + '"><div class="stripe"></div><div class="finding-body">' +
+          '<div class="finding-top"><span class="sev-badge">' + SEV_LABEL[sev] + '</span><span class="finding-time">' + esc(fmtDateTime(e.time)) + "</span></div>" +
+          "<h5>" + esc(riskEventLabel(e)) + "</h5><p>" + esc(riskEventDetail(e)) + "</p></div></div>";
+      }).join("") + "</div>";
+  }
+  function runCauseSearch() {
+    if (!reconState.lastResult) {
+      els.reconCauseResult.innerHTML = '<p class="recon-lead">Спершу виконайте звірку вище.</p>';
+      return;
+    }
+    var amt = parseFloat(String(els.reconCauseAmount.value).replace(",", "."));
+    var tol = parseFloat(String(els.reconCauseTol.value).replace(",", "."));
+    if (!isFinite(tol) || tol < 0) tol = 1;
+    if (!isFinite(amt) || amt <= 0) {
+      els.reconCauseResult.innerHTML = '<p class="recon-lead">Введіть суму розбіжності в гривнях (число більше нуля).</p>';
+      return;
+    }
+    var direction = els.reconCauseDir.value;
+    var lr = reconState.lastResult;
+    var candidates = buildCauseCandidates(direction, lr.trueHostOnly, lr.matchResult.matchedFailed, lr.matchResult.deviceOnly, lr.matchResult.unconfirmed);
+    var combos = candidates.length ? findAmountCombos(candidates, amt, tol, 4) : [];
+    var html = candidates.length
+      ? renderCauseCombos(combos, candidates, amt, tol, lr.riskEvents)
+      : '<div class="finding sev-warning"><div class="stripe"></div><div class="finding-body"><div class="finding-top"><span class="sev-badge">' + SEV_LABEL.warning + '</span></div>' +
+        "<h5>Немає аномалій цього типу</h5><p>Серед виявлених аномалій циклу немає жодної " +
+        (direction === "shortage" ? "операції зі сторони недостачі (журнал успішний, немає підтвердження в АТМ)" : "видачі без операції в журналі (надлишок)") +
+        " — точну суму зіставити нема з чим. Перегляньте технічні події нижче.</p></div></div>";
+    html += renderCauseEvents(lr.riskEvents, lr.period);
+    els.reconCauseResult.innerHTML = html;
+  }
+
+  els.reconRunBtn.addEventListener("click", function () {
+    reconClearError();
+    els.reconRunBtn.disabled = true;
+    els.reconRunBtn.textContent = "Звіряю…";
+
+    var xlsxReader = new FileReader();
+    var xlsxPromise = new Promise(function (resolve, reject) {
+      xlsxReader.onload = function () { resolve(xlsxReader.result); };
+      xlsxReader.onerror = function () { reject(new Error("не вдалося прочитати xlsx-файл")); };
+      xlsxReader.readAsArrayBuffer(reconState.xlsxFile);
+    }).then(function (ab) { return parseXlsxArrayBuffer(ab); }).then(function (rows) { return extractHostJournal(rows); });
+
+    var logsPromise = Promise.all(reconState.logFiles.map(function (file) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function () {
+          try {
+            var bytes = new Uint8Array(r.result);
+            var d = decodeBytes(bytes);
+            if (isTraceText(d.text, file.name)) {
+              resolve({ kind: "trace", filename: file.name, trace: parseTraceXml(d.text, file.name) });
+              return;
+            }
+            var baseDate = detectBaseDate(d.text, file.name);
+            var sessions = parseAtmSessions(d.text, file.name);
+            var receipts = parseAtmReceipts(d.text, file.name);
+            var riskEvents = parseAtmRiskEvents(d.text, file.name);
+            resolve({ kind: "journal", filename: file.name, baseDate: baseDate, text: d.text, sessions: sessions, receipts: receipts, riskEvents: riskEvents });
+          } catch (e) { reject(e); }
+        };
+        r.onerror = function () { reject(new Error("не вдалося прочитати " + file.name)); };
+        r.readAsArrayBuffer(file);
+      });
+    }));
+
+    Promise.all([xlsxPromise, logsPromise]).then(function (res) {
+      var host = res[0], logs = res[1];
+      if (!host.txns.length) {
+        throw new Error("Не вдалося розпізнати рядки журналу в xlsx — перевірте, що це експорт «Журнал операцій АТМ» з колонками Дата транзакції / Номер картки / RRN / Сума транзакції.");
+      }
+      var deviceSessions = [];
+      var deviceReceipts = [];
+      var riskEventsAll = [];
+      var coveredDates = {};
+      // траси розбираються окремо: вони не містять квитанцій і карток, тож
+      // не «покривають» дату для звірки операцій, але дають фізичний рух
+      // готівки й помилки самого диспенсера
+      var traces = logs.filter(function (l) { return l.kind === "trace"; }).map(function (l) { return l.trace; });
+      var traceSummary = null;
+      if (traces.length) {
+        traceSummary = { files: traces.length, dates: {}, dispenses: [], currency: "",
+          counts: { dispense: 0, present: 0, retract: 0, reject: 0, reset: 0, test: 0, failed: 0 },
+          rejectedNotes: 0, first: null, last: null };
+        traces.forEach(function (t) {
+          Object.keys(t.dates).forEach(function (d) { traceSummary.dates[d] = true; });
+          traceSummary.dispenses = traceSummary.dispenses.concat(t.dispenses);
+          traceSummary.episodes = (traceSummary.episodes || []).concat(t.episodes);
+          traceSummary.snapshots = (traceSummary.snapshots || []).concat(t.snapshots);
+          traceSummary.rejectedNotes += t.rejectedNotes;
+          if (!traceSummary.currency && t.currency) traceSummary.currency = t.currency;
+          Object.keys(t.counts).forEach(function (k) { traceSummary.counts[k] += t.counts[k]; });
+          if (t.first && (!traceSummary.first || t.first.time < traceSummary.first.time)) traceSummary.first = t.first;
+          if (t.last && (!traceSummary.last || t.last.time > traceSummary.last.time)) traceSummary.last = t.last;
+          riskEventsAll = riskEventsAll.concat(t.events);
+        });
+        traceSummary.dispenses.sort(function (a, b) { return a.time - b.time; });
+      }
+      logs.filter(function (l) { return l.kind !== "trace"; }).forEach(function (l) {
+        deviceSessions = deviceSessions.concat(l.sessions);
+        deviceReceipts = deviceReceipts.concat(l.receipts);
+        riskEventsAll = riskEventsAll.concat(l.riskEvents);
+        if (l.baseDate) coveredDates[l.baseDate] = true;
+        else {
+          l.sessions.forEach(function (s) { coveredDates[s.startTime.toISOString().slice(0, 10)] = true; });
+        }
+      });
+      var period = parseHostPeriod(host.meta);
+      // у звірку йдуть лише оброблені операції: відмовлені перевіряються
+      // окремо — там питання протилежне, чи не було фізичної видачі
+      var processedTxns = host.txns.filter(function (t) { return !t.declined; });
+      var declinedTxns = host.txns.filter(function (t) { return t.declined; });
+      var matchResult = matchCycle(processedTxns, deviceReceipts, deviceSessions, period, 180);
+      var cashReceiptsCount = deviceReceipts.filter(function (r) { return isCashTag(r.tag) && inPeriod(r.dateTime, period); }).length;
+      renderReconciliation(host.meta, processedTxns, cashReceiptsCount, deviceSessions.length, coveredDates, period, matchResult, traceSummary, declinedTxns, deviceReceipts);
+
+      var riskEventsInPeriod = riskEventsAll.filter(function (e) { return eventInPeriod(e, period); });
+      var partition = partitionHostOnly(matchResult.hostOnly, coveredDates);
+      reconState.lastResult = { matchResult: matchResult, trueHostOnly: partition.trueHostOnly, riskEvents: riskEventsInPeriod, period: period };
+      reconState.report = {
+        meta: host.meta, period: period, traceSummary: traceSummary,
+        declined: declinedTxns, deviceReceipts: deviceReceipts, processedTxns: processedTxns, cross: lastCross,
+        journals: logs.filter(function (l) { return l.kind === "journal"; })
+          .map(function (l) { return { filename: l.filename, baseDate: l.baseDate, text: l.text }; }),
+        findings: lastFindings, riskEvents: riskEventsInPeriod,
+        coveredDates: coveredDates, hostTxns: host.txns
+      };
+      els.reconExportBtn.disabled = false;
+      els.reconEventsBlock.innerHTML = renderCauseEvents(riskEventsInPeriod, period);
+      els.reconCauseSection.style.display = "block";
+      els.reconCauseResult.innerHTML = "";
+    }).catch(function (e) {
+      reconShowError(e.message || String(e));
+      els.reconStatsWrap.style.display = "none";
+      els.reconFindingsHead.style.display = "none";
+      els.reconFindingsList.innerHTML = "";
+      els.reconCoverage.style.display = "none";
+      els.reconShortage.style.display = "none";
+      els.reconEventsBlock.innerHTML = "";
+      els.reconExportBtn.disabled = true;
+      reconState.report = null;
+      els.reconCauseSection.style.display = "none";
+      reconState.lastResult = null;
+    }).then(function () {
+      els.reconRunBtn.disabled = false;
+      els.reconRunBtn.textContent = "Звірити";
+      updateReconRunEnabled();
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Вивантаження заключення у .docx. Файл docx — це zip з OOXML усередині;
+  // збираємо його вручну, без сторонніх бібліотек: записи кладемо без
+  // стиснення (метод 0), тому потрібен лише CRC32.
+  // ---------------------------------------------------------------
+  function crc32(bytes) {
+    var t = crc32.table;
+    if (!t) {
+      t = crc32.table = new Int32Array(256);
+      for (var i = 0; i < 256; i++) {
+        var c = i;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[i] = c;
+      }
+    }
+    var crc = -1;
+    for (var j = 0; j < bytes.length; j++) crc = (crc >>> 8) ^ t[(crc ^ bytes[j]) & 0xFF];
+    return (crc ^ -1) >>> 0;
+  }
+  function zipStore(files) {
+    var enc = new TextEncoder();
+    var parts = [], central = [], offset = 0;
+    files.forEach(function (f) {
+      var name = enc.encode(f.name);
+      var data = enc.encode(f.text);
+      var crc = crc32(data);
+      var lh = new Uint8Array(30 + name.length), lv = new DataView(lh.buffer);
+      lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true);
+      lv.setUint32(14, crc, true); lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
+      lv.setUint16(26, name.length, true);
+      lh.set(name, 30);
+      parts.push(lh, data);
+      var ch = new Uint8Array(46 + name.length), cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
+      cv.setUint16(28, name.length, true); cv.setUint32(42, offset, true);
+      ch.set(name, 46);
+      central.push(ch);
+      offset += lh.length + data.length;
+    });
+    var cdSize = central.reduce(function (a, c) { return a + c.length; }, 0);
+    var eocd = new Uint8Array(22), ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+    ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [eocd]), { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  }
+  function xmlEsc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c];
+    });
+  }
+  function docPara(text, o) {
+    o = o || {};
+    var rpr = "<w:rPr>" +
+      (o.mono ? '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/>' : '<w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>') +
+      (o.bold ? "<w:b/>" : "") + (o.italic ? "<w:i/>" : "") +
+      '<w:sz w:val="' + (o.size || 22) + '"/></w:rPr>';
+    var lines = String(text == null ? "" : text).split("\n");
+    var runs = lines.map(function (l, i) {
+      return "<w:r>" + rpr + (i ? "<w:br/>" : "") + '<w:t xml:space="preserve">' + xmlEsc(l) + "</w:t></w:r>";
+    }).join("");
+    return "<w:p><w:pPr><w:spacing w:after=\"" + (o.after == null ? 100 : o.after) + "\"/>" +
+      (o.mono ? '<w:ind w:left="220"/>' : "") + "</w:pPr>" + runs + "</w:p>";
+  }
+  function buildDocx(paras, filename) {
+    var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+      "<w:body>" + paras.join("") +
+      '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1134"/></w:sectPr>' +
+      "</w:body></w:document>";
+    var ct = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      "</Types>";
+    var rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      "</Relationships>";
+    var blob = zipStore([
+      { name: "[Content_Types].xml", text: ct },
+      { name: "_rels/.rels", text: rels },
+      { name: "word/document.xml", text: doc }
+    ]);
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  // фрагмент журналу навколо вказаного часу: від найближчого попереднього
+  // "-> TRANSACTION START" до наступного "<- TRANSACTION END"
+  function journalExcerpt(journals, when, dateStr) {
+    var j = null;
+    journals.forEach(function (x) { if (!j && x.baseDate === dateStr) j = x; });
+    if (!j) return null;
+    var lines = j.text.split(/\r\n|\n/);
+    var target = when.getUTCHours() * 3600 + when.getUTCMinutes() * 60 + when.getUTCSeconds();
+    var re = /^(\d{2}):(\d{2}):(\d{2})/;
+    var best = -1, bestDiff = 1e9;
+    for (var i = 0; i < lines.length; i++) {
+      var mm = lines[i].match(re);
+      if (!mm) continue;
+      var sec = (+mm[1]) * 3600 + (+mm[2]) * 60 + (+mm[3]);
+      var diff = Math.abs(sec - target);
+      if (diff < bestDiff) { bestDiff = diff; best = i; }
+    }
+    if (best < 0 || bestDiff > 600) return null;
+    var from = best, to = best;
+    for (var a = best; a >= 0 && best - a < 120; a--) {
+      if (lines[a].indexOf("-> TRANSACTION START") !== -1) { from = a; break; }
+      from = a;
+    }
+    for (var b = best; b < lines.length && b - best < 160; b++) {
+      if (lines[b].indexOf("<- TRANSACTION END") !== -1) { to = b; break; }
+      to = b;
+    }
+    return { file: j.filename, text: lines.slice(from, to + 1).join("\n") };
+  }
+
+  var ORDINALS = ["Перша", "Друга", "Третя", "Четверта", "П'ята", "Шоста",
+    "Сьома", "Восьма", "Дев'ята", "Десята"];
+
+  // Цитата стану касет у тому ж вигляді, що й у ручному розборі:
+  // рядок EVENT, далі RACT/RRET і по касетах «ACT, NDV \ різниця».
+  function countersBlock(snap) {
+    var d = snap.time;
+    var pad = function (n, w) { return String(isNaN(n) ? 0 : n).padStart(w, "0"); };
+    var iso = fmtDateTime(d).split(" ");
+    var out = '<EVENT date="' + iso[0].split(".").reverse().join("-") + '" time="' + iso[1] + '">' +
+      "\nRACT=" + pad(snap.rejectBox, 4) + "\nRRET=" + pad(snap.retractBox, 2);
+    snap.cassettes.forEach(function (c) {
+      var act = isNaN(c.remaining) ? 0 : c.remaining;
+      out += "\n" + c.no + "ACT=" + pad(act, 4);
+      if (!isNaN(c.ndv)) out += "," + c.no + "NDV=" + pad(c.ndv, 4) + "  \\" + (c.ndv - act);
+      out += "   (" + c.value + " " + (c.currency || "") + ")";
+    });
+    return out;
+  }
+
+  // Що сталося з лічильниками між станом до видачі й станом після ретракту.
+  // Саме ця перевірка є ключовою в ручному розборі: якщо NDV не змінився,
+  // купюри не пішли ні клієнту, ні в касету забутих.
+  function episodeCounters(e) {
+    var from = e.during || e.before;
+    if (!from || !e.after) return null;
+    var rows = [], ndvMoved = false, actMoved = false;
+    from.cassettes.forEach(function (c0) {
+      var c1 = null;
+      e.after.cassettes.forEach(function (x) { if (x.no === c0.no) c1 = x; });
+      if (!c1) return;
+      var dAct = (isNaN(c0.remaining) || isNaN(c1.remaining)) ? null : c1.remaining - c0.remaining;
+      var dNdv = (isNaN(c0.ndv) || isNaN(c1.ndv)) ? null : c1.ndv - c0.ndv;
+      if (dNdv) ndvMoved = true;
+      if (dAct) actMoved = true;
+      rows.push("касета " + c0.no + " (" + c0.value + "): ACT " + c0.remaining + " -> " + c1.remaining +
+        (dNdv === null ? "" : ", NDV " + c0.ndv + " -> " + c1.ndv) +
+        (dAct ? "" : "  (ACT без змін)"));
+    });
+    return {
+      rows: rows, ndvMoved: ndvMoved, actMoved: actMoved,
+      rejectDelta: (e.after.rejectBox || 0) - (from.rejectBox || 0),
+      retractDelta: (e.after.retractBox || 0) - (from.retractBox || 0),
+      before: from, after: e.after, clean: e.afterClean !== false
+    };
+  }
+
+  // Звірка траси з журналом операцій за часом і сумою: у трасі немає ні
+  // картки, ні RRN, тому зіставляти можна лише так — і саме тому результат
+  // подається як орієнтир, а не як доказ.
+  function matchTraceByTime(dispenses, txns, period, windowSec) {
+    var used = {}, matched = [], noHost = [];
+    dispenses.forEach(function (d) {
+      var best = -1, bestDiff = 1e12;
+      txns.forEach(function (h, i) {
+        if (used[i]) return;
+        if (Math.abs(h.amount - d.amount) >= 0.01) return;
+        var diff = Math.abs(parseHostDateTime(h.dateTime).getTime() - d.time.getTime());
+        if (diff <= windowSec * 1000 && diff < bestDiff) { bestDiff = diff; best = i; }
+      });
+      if (best >= 0) { used[best] = true; matched.push({ disp: d, host: txns[best] }); }
+      else noHost.push(d);
+    });
+    var noTrace = txns.filter(function (h, i) { return !used[i] && h.amount > 0; });
+    return { matched: matched, noHost: noHost, noTrace: noTrace };
+  }
+
+  function buildConclusion() {
+    var R = reconState.report;
+    if (!R) return;
+    var ts = R.traceSummary;
+    var P = [];
+    var atm = R.meta.atmId || "—";
+    var periodTxt = R.meta.periodFrom && R.meta.periodTo
+      ? R.meta.periodFrom + " – " + R.meta.periodTo : "період не розпізнано";
+    var dirTxt = els.reconCauseDir.value === "excess" ? "Надлишок" : "Нестача";
+    var amt = parseFloat(String(els.reconCauseAmount.value).replace(",", "."));
+
+    P.push(docPara("Розгляд " + (dirTxt === "Надлишок" ? "надлишку" : "нестачі") + " " + atm + ": " + periodTxt,
+      { bold: true, size: 28, after: 120 }));
+    P.push(docPara(isFinite(amt) && amt > 0 ? dirTxt + ": " + fmtUAH(amt) : "Сума розбіжності не вказана.",
+      { bold: true, after: 220 }));
+
+    // ---------- 1. лічильники модуля ----------
+    P.push(docPara("Лічильники модуля на момент розвантаження", { bold: true, size: 24 }));
+    if (ts && ts.last) {
+      P.push(docPara(countersBlock(ts.last), { mono: true, size: 18, after: 60 }));
+      P.push(docPara("ACT — залишок купюр за лічильником пристрою, NDV — лічильник із траси, після похилої риски — різниця NDV мінус ACT. RACT — касета забутих/відбракованих, RRET — ретракт.",
+        { size: 18, italic: true, after: 200 }));
+    } else {
+      P.push(docPara("Логи трасування диспенсера не завантажено — стан касет на момент розвантаження недоступний. Заключення побудовано лише за журналом операцій і логами банкомата.",
+        { after: 200 }));
+    }
+
+    // ---------- 2. транзакції з ретрактом ----------
+    var eps = (ts && ts.episodes ? ts.episodes : []).filter(function (e) {
+      return !R.period || (e.retracts[0].time >= R.period.from && e.retracts[0].time <= R.period.to);
+    });
+    if (ts) {
+      P.push(docPara("Транзакції з ретрактом за файлами трасування", { bold: true, size: 24 }));
+      if (!eps.length) {
+        P.push(docPara("Команд RETRACT у межах періоду не зафіксовано.", { after: 200 }));
+      } else {
+        P.push(docPara("У логах зафіксовано " + eps.length + " транзакці" + (eps.length === 1 ? "ю" : "й") +
+          ", під час яких згідно з файлами трасування виконувалася команда type=\"RETRACT\":", { after: 120 }));
+        eps.forEach(function (e, i) {
+          P.push(docPara(ORDINALS[i] || ("Епізод " + (i + 1)), { bold: true, after: 60 }));
+          var raw = "";
+          if (e.dispense) {
+            raw += '<COMMAND date="' + e.dispense.dateStr + '" time="' + e.dispense.timeStr + '" type="DISPENSE">';
+            if (e.dispense.payload) {
+              raw += '\n<ENTRY date="' + e.dispense.entryDate + '" time="' + e.dispense.entryTime +
+                '" type="CNG_DISP_STANDARD">' + e.dispense.payload + "</ENTRY>";
+            }
+          }
+          if (e.present) raw += '\n<COMMAND date="' + e.present.dateStr + '" time="' + e.present.timeStr + '" type="PRESENT">';
+          e.retracts.forEach(function (r) { raw += '\n<COMMAND date="' + r.dateStr + '" time="' + r.timeStr + '" type="RETRACT">'; });
+          P.push(docPara(raw, { mono: true, size: 18, after: 80 }));
+
+          var ex = e.dispense ? journalExcerpt(R.journals, e.dispense.time, e.dispense.dateStr) : null;
+          var sumTxt = e.dispense ? "Сума " + fmtUAH(e.dispense.amount) + " (" +
+            e.dispense.items.map(function (it) { return it.notes + " × " + it.value; }).join(" + ") + ")." : "";
+          if (ex) {
+            var bad = /FAILED|ERROR|JAM|INVALID|TIMEOUT/.test(ex.text);
+            P.push(docPara("У журналі — " + (bad ? "зафіксовано помилки" : "без помилок") + ". " + sumTxt, { after: 60 }));
+            P.push(docPara(ex.text, { mono: true, size: 18, after: 80 }));
+          } else {
+            P.push(docPara("Журнал банкомата за цю дату не завантажено, фрагмент журналу не наведено. " + sumTxt, { after: 80 }));
+          }
+
+          var cc = episodeCounters(e);
+          if (cc) {
+            P.push(docPara("Лічильники в момент видачі (" + fmtDateTime(cc.before.time) + ") і в наступному стані після ретракту (" + fmtDateTime(cc.after.time) + "):", { size: 20, italic: true, after: 40 }));
+            P.push(docPara(cc.rows.join("\n"), { mono: true, size: 18, after: 60 }));
+            P.push(docPara(
+              (cc.ndvMoved ? "Лічильники NDV по касетах змінилися." : "Лічильники NDV по касетах не змінилися.") + " " +
+              (cc.rejectDelta ? "Лічильник касети забутих/відбракованих зріс на " + cc.rejectDelta + " купюр." : "Лічильник касети забутих/відбракованих не змінився.") + " " +
+              (cc.retractDelta ? "Лічильник ретракту зріс на " + cc.retractDelta + "." : "Лічильник ретракту не змінився.") +
+              (!cc.ndvMoved && !cc.rejectDelta && !cc.retractDelta
+                ? " Тобто за лічильниками пристрою купюри не потрапили ні клієнту, ні в касету забутих — цей епізод потребує окремої уваги." : "") +
+              (cc.clean ? "" : " Увага: між ретрактом і цим станом устигла пройти ще одна видача, тому частина змін лічильників належить їй, а не цьому епізоду."),
+              { after: 80 }));
+          }
+          if (e.stdvAfter) {
+            var kv = e.stdvAfter.kv || {};
+            P.push(docPara("Найближчий статус пристрою після епізоду: остання команда — " + (kv.LCMD || "—") +
+              ", статус виконання — " + (kv.LSTA || "—") + ", код стану " + (kv.SCOD || "—") + ".", { after: 40 }));
+            P.push(docPara(e.stdvAfter.raw, { mono: true, size: 16, after: 200 }));
+          }
+        });
+      }
+    }
+
+    // ---------- 3. звірка за часом ----------
+    if (ts && R.processedTxns) {
+      var inP = ts.dispenses.filter(function (d) { return !d.test && inPeriod(d.time, R.period); });
+      var hostCash = R.processedTxns.filter(function (h) {
+        return inPeriod(parseHostDateTime(h.dateTime), R.period) && h.amount > 0;
+      });
+      var mt = matchTraceByTime(inP, hostCash, R.period, 180);
+      P.push(docPara("Звірка траси з журналом операцій за часом", { bold: true, size: 24 }));
+      P.push(docPara("Видач за трасою в межах періоду: " + inP.length + " на " +
+        fmtUAH(inP.reduce(function (a, d) { return a + d.amount; }, 0)) +
+        ". Для " + mt.matched.length + " із них знайдено операцію в журналі, що збігається за сумою й відстоїть не більше ніж на 3 хвилини. " +
+        "Зіставлення лише за часом і сумою: у трасі немає ні номера картки, ні RRN, тому це орієнтир, а не доказ.", { after: 100 }));
+      if (mt.noHost.length) {
+        P.push(docPara("Видачі за трасою без операції в журналі: " + mt.noHost.length + " на " +
+          fmtUAH(mt.noHost.reduce(function (a, d) { return a + d.amount; }, 0)) + ".", { bold: true, after: 40 }));
+        P.push(docPara(mt.noHost.slice(0, 25).map(function (d) {
+          return fmtDateTime(d.time) + " — " + fmtUAH(d.amount) + " (" +
+            d.items.map(function (it) { return "касета " + it.no + ": " + it.notes + " × " + it.value; }).join(", ") + ")";
+        }).join("\n") + (mt.noHost.length > 25 ? "\n…та ще " + (mt.noHost.length - 25) : ""), { mono: true, size: 18, after: 100 }));
+      }
+      if (mt.noTrace.length) {
+        P.push(docPara("Операції журналу без видачі за трасою: " + mt.noTrace.length + " на " +
+          fmtUAH(mt.noTrace.reduce(function (a, h) { return a + h.amount; }, 0)) + ".", { bold: true, after: 40 }));
+        P.push(docPara(mt.noTrace.slice(0, 25).map(function (h) {
+          return fmtHostDT(h.dateTime) + " — " + fmtUAH(h.amount) + ", картка " + h.card + ", RRN " + h.rrn;
+        }).join("\n") + (mt.noTrace.length > 25 ? "\n…та ще " + (mt.noTrace.length - 25) : ""), { mono: true, size: 18, after: 200 }));
+      }
+      if (!mt.noHost.length && !mt.noTrace.length) {
+        P.push(docPara("Кожній видачі за трасою відповідає операція журналу й навпаки.", { after: 200 }));
+      }
+      reconState.timeMatch = mt;
+    }
+
+    // ---------- 3б. кількість операцій за трьома джерелами ----------
+    if (R.cross) {
+      var cc2 = R.cross.counts;
+      P.push(docPara("Кількість операцій за джерелами", { bold: true, size: 24 }));
+      P.push(docPara("Траса диспенсера: " + cc2.trace + " видач. Логи банкомата: " + cc2.atm +
+        " квитанцій видачі. Журнал процесингу: " + cc2.host + " операцій.", { after: 60 }));
+      var disp2 = R.cross.traceOnly.concat(R.cross.traceNoAtm, R.cross.traceNoHost);
+      if (!disp2.length && !R.cross.atmOnly.length && !R.cross.hostOnly.length) {
+        P.push(docPara("Кількість збігається, кожній видачі знайдено відповідник у двох інших джерелах.", { after: 200 }));
+      } else {
+        if (disp2.length) {
+          P.push(docPara("Спірні операції в трасуванні (" + disp2.length + "):", { bold: true, after: 40 }));
+          P.push(docPara(disp2.slice(0, 30).map(function (r) {
+            return dispText(r.disp) + "\n    " + (!r.receipt && !r.host
+              ? "немає ні квитанції видачі в лозі АТМ, ні операції в журналі процесингу"
+              : (!r.receipt ? "немає квитанції видачі в лозі АТМ (операція в журналі є: " + fmtHostDT(r.host.dateTime) + ", RRN " + r.host.rrn + ")"
+                            : "немає операції в журналі процесингу (квитанція в лозі АТМ є: " + fmtDateTime(r.receipt.dateTime) + ", RRN " + r.receipt.rrn + ")"));
+          }).join("\n") + (disp2.length > 30 ? "\n…та ще " + (disp2.length - 30) : ""), { mono: true, size: 18, after: 100 }));
+        }
+        if (R.cross.atmOnly.length) {
+          P.push(docPara("Квитанції видачі в лозі АТМ без видачі в трасі (" + R.cross.atmOnly.length + "):", { bold: true, after: 40 }));
+          P.push(docPara(R.cross.atmOnly.slice(0, 25).map(function (r) {
+            return fmtDateTime(r.dateTime) + " — " + fmtUAH(r.amount) + ", RRN " + r.rrn;
+          }).join("\n"), { mono: true, size: 18, after: 100 }));
+        }
+        if (R.cross.hostOnly.length) {
+          P.push(docPara("Операції журналу процесингу без видачі в трасі (" + R.cross.hostOnly.length + "):", { bold: true, after: 40 }));
+          P.push(docPara(R.cross.hostOnly.slice(0, 25).map(function (h) {
+            return fmtHostDT(h.dateTime) + " — " + fmtUAH(h.amount) + ", картка " + h.card + ", RRN " + h.rrn;
+          }).join("\n"), { mono: true, size: 18, after: 200 }));
+        }
+      }
+    }
+
+    // ---------- 4. відмовлені операції ----------
+    if (R.declined && R.declined.length) {
+      P.push(docPara("Відмовлені операції журналу", { bold: true, size: 24 }));
+      var declFind = (R.findings || []).filter(function (f) { return /відмовлена в журналі/.test(f.title); });
+      P.push(docPara("У журналі " + R.declined.length + " відмовлених операцій. По них перевірялося протилежне питання — чи немає фізичної видачі в логах банкомата або в трасі диспенсера." +
+        (declFind.length ? " Знайдено збігів: " + declFind.length + "." : " Збігів не знайдено."), { after: 80 }));
+      declFind.forEach(function (f) {
+        P.push(docPara("• " + f.title + " (" + f.time + ")", { bold: true, after: 40 }));
+        P.push(docPara(String(f.detail).replace(/<[^>]*>/g, ""), { size: 20, after: 100 }));
+      });
+      P.push(docPara("", { after: 100 }));
+    }
+
+    // ---------- 5. збої ----------
+    var errs = (R.riskEvents || []).filter(function (e) {
+      return e.type === "logEvent" && (e.sev === "critical" || (e.sev === "warning" && e.cash)) && e.key !== "unknownError";
+    }).sort(function (a, b) { return a.time - b.time; });
+    var unknown = (R.riskEvents || []).filter(function (e) { return e.key === "unknownError"; });
+    P.push(docPara("Збої, що впливають на рух готівки", { bold: true, size: 24 }));
+    if (!errs.length) {
+      P.push(docPara("Збоїв, які могли б змінити залишок готівки, у межах періоду не зафіксовано.", { after: 120 }));
+    } else {
+      errs.forEach(function (e) {
+        P.push(docPara("• " + riskEventLabel(e), { bold: true, after: 30 }));
+        P.push(docPara(e.detail + " Джерело: " + e.sourceFile + ", «" + e.sample + "».", { size: 20, after: 80 }));
+      });
+    }
+    if (unknown.length) {
+      P.push(docPara("Крім того, " + unknown.length + " рядк(ів) журналу містять ознаку збою, але не підпадають під відомі правила — їх варто переглянути вручну: " +
+        unknown.slice(0, 8).map(function (e) { return fmtDateTime(e.time) + " «" + e.sample + "»"; }).join("; ") + ".",
+        { size: 20, italic: true, after: 160 }));
+    }
+
+    // ---------- 6. висновок ----------
+    P.push(docPara("Висновок", { bold: true, size: 24 }));
+    var c = [];
+    if (eps.length) {
+      var epSum = eps.reduce(function (a, e) { return a + (e.dispense ? e.dispense.amount : 0); }, 0);
+      var quiet = eps.filter(function (e) {
+        var cc = episodeCounters(e);
+        return cc && cc.clean && !cc.ndvMoved && !cc.rejectDelta && !cc.retractDelta;
+      });
+      c.push("Зафіксовано " + eps.length + " епізод(ів) з ретрактом на загальну суму видач " + fmtUAH(epSum) +
+        ": купюри виходили з касет і подавались клієнту, але були втягнуті назад.");
+      if (quiet.length) {
+        c.push("У " + quiet.length + " з них після ретракту не змінилися ні лічильники NDV по касетах, ні лічильники касети забутих/відбракованих — цим епізодам треба приділити особливу увагу.");
+      }
+    }
+    if (R.cross) {
+      var cc3 = R.cross.counts;
+      if (!(cc3.trace === cc3.atm && cc3.atm === cc3.host)) {
+        c.push("Кількість операцій за джерелами не збігається: траса " + cc3.trace + ", лог АТМ " + cc3.atm +
+          ", журнал " + cc3.host + ". Спірних операцій у трасуванні: " +
+          (R.cross.traceOnly.length + R.cross.traceNoAtm.length + R.cross.traceNoHost.length) + ".");
+      }
+    }
+    if (reconState.timeMatch && reconState.timeMatch.noHost.length) {
+      c.push("За часом і сумою " + reconState.timeMatch.noHost.length + " видач(і) з траси не мають операції в журналі на " +
+        fmtUAH(reconState.timeMatch.noHost.reduce(function (a, d) { return a + d.amount; }, 0)) + ".");
+    }
+    var declFind2 = (R.findings || []).filter(function (f) { return /відмовлена в журналі/.test(f.title); });
+    if (declFind2.length) c.push(declFind2.length + " відмовлен(их) операц(ій) мають ознаки фізичної видачі в логах.");
+    if (ts && ts.counts.test) c.push(ts.counts.test + " тестова(их) видача(і) в сервісному режимі — готівка виходила з касет без операції в процесингу.");
+    if (ts && ts.rejectedNotes) c.push("Відбраковано " + ts.rejectedNotes + " купюр — вони мають бути в касеті реджекту.");
+    var crit = (R.findings || []).filter(function (f) { return f.severity === "critical" && !/відмовлена в журналі/.test(f.title); });
+    if (crit.length) c.push(crit.length + " критичн(их) розбіжност(ей) між журналом операцій і логами банкомата.");
+    if (!c.length) c.push("Технічних причин розбіжності в завантажених логах не знайдено.");
+    c.forEach(function (x) { P.push(docPara("— " + x, { after: 80 })); });
+    P.push(docPara("Остаточне рішення прохання приймати з урахуванням матеріалів фото- та відеофіксації.", { italic: true, after: 200 }));
+    P.push(docPara("Документ сформовано автоматично за журналом операцій, логами банкомата та файлами трасування диспенсера. Наведені фрагменти логів — цитати з вихідних файлів.",
+      { size: 18, italic: true }));
+
+    buildDocx(P, "Розгляд_розбіжності_" + String(atm).replace(/[^\w-]/g, "") + ".docx");
+  }
+  els.reconExportBtn.addEventListener("click", buildConclusion);
+
+  // ===============================================================
+  // Окремий аналіз логів трасування диспенсера
+  // ===============================================================
+  var traceState = { files: [], result: null };
+
+  // Лічильник ACT касети може лише спадати з видачами. Якщо він зріс —
+  // касету поповнили або замінили, і зводити баланс наскрізь уже не можна.
+  // Тому період ріжеться на сегменти по таких моментах, і баланс рахується
+  // окремо в межах кожного сегмента.
+  function analyzeTraces(traces) {
+    var snaps = [], disp = [], events = [], episodes = [], dates = {}, info = {};
+    var counts = { dispense: 0, present: 0, retract: 0, reject: 0, reset: 0, test: 0, failed: 0 };
+    var rejectedNotes = 0, currency = "";
+    traces.forEach(function (t) {
+      snaps = snaps.concat(t.snapshots);
+      disp = disp.concat(t.dispenses);
+      events = events.concat(t.events);
+      episodes = episodes.concat(t.episodes);
+      rejectedNotes += t.rejectedNotes;
+      if (!currency && t.currency) currency = t.currency;
+      Object.keys(t.dates).forEach(function (d) { dates[d] = true; });
+      Object.keys(t.counts).forEach(function (k) { counts[k] += t.counts[k]; });
+      Object.keys(t.info).forEach(function (k) { if (!info[k]) info[k] = t.info[k]; });
+    });
+    snaps.sort(function (a, b) { return a.time - b.time; });
+    disp.sort(function (a, b) { return a.time - b.time; });
+
+    function casOf(snap, no) {
+      var out = null;
+      snap.cassettes.forEach(function (c) { if (c.no === no) out = c; });
+      return out;
+    }
+    var bounds = [0], refills = [];
+    for (var i = 1; i < snaps.length; i++) {
+      var grew = false;
+      snaps[i].cassettes.forEach(function (c) {
+        var p = casOf(snaps[i - 1], c.no);
+        if (p && !isNaN(c.remaining) && !isNaN(p.remaining) && c.remaining > p.remaining) grew = true;
+      });
+      if (grew) { bounds.push(i); refills.push(snaps[i].time); }
+    }
+    bounds.push(snaps.length);
+
+    var segments = [];
+    for (var b = 0; b + 1 < bounds.length; b++) {
+      var from = snaps[bounds[b]], to = snaps[bounds[b + 1] - 1];
+      if (!from || !to || from === to) continue;
+      var rows = from.cassettes.map(function (c) {
+        var end = casOf(to, c.no);
+        var notes = 0, testNotes = 0;
+        disp.forEach(function (d) {
+          if (d.time <= from.time || d.time > to.time) return;
+          d.items.forEach(function (it) {
+            if (it.no !== c.no) return;
+            notes += it.notes;
+            if (d.test) testNotes += it.notes;
+          });
+        });
+        var a0 = c.remaining, a1 = end ? end.remaining : NaN;
+        var gap = (isNaN(a0) || isNaN(a1)) ? null : (a0 - a1 - notes);
+        return { no: c.no, value: c.value, currency: c.currency, startAct: a0, endAct: a1,
+          startNdv: c.ndv, endNdv: end ? end.ndv : NaN, notes: notes, testNotes: testNotes,
+          amount: notes * c.value, gap: gap, gapAmount: gap === null ? null : gap * c.value };
+      });
+      segments.push({ from: from, to: to, rows: rows,
+        rejectBoxDelta: (to.rejectBox || 0) - (from.rejectBox || 0),
+        retractBoxDelta: (to.retractBox || 0) - (from.retractBox || 0),
+        gapAmount: rows.reduce(function (a, r) { return a + (r.gapAmount || 0); }, 0),
+        gapNotes: rows.reduce(function (a, r) { return a + (r.gap || 0); }, 0),
+        amount: rows.reduce(function (a, r) { return a + r.amount; }, 0) });
+    }
+    var real = disp.filter(function (d) { return !d.test; });
+    return { traces: traces, files: traces.length, dates: dates, info: info, counts: counts,
+      rejectedNotes: rejectedNotes, currency: currency, snapshots: snaps, dispenses: disp,
+      events: events, episodes: episodes, segments: segments, refills: refills,
+      firstSnap: snaps[0] || null, lastSnap: snaps[snaps.length - 1] || null,
+      totalAmount: real.reduce(function (a, d) { return a + d.amount; }, 0),
+      totalNotes: real.reduce(function (a, d) {
+        return a + d.items.reduce(function (x, it) { return x + it.notes; }, 0); }, 0),
+      testAmount: disp.filter(function (d) { return d.test; }).reduce(function (a, d) { return a + d.amount; }, 0) };
+  }
+
+  function renderTraceAnalysis(A) {
+    var dts = Object.keys(A.dates).sort();
+    var ov = "Розібрано файлів трасування: " + A.files + " (дати: " + dts.join(", ") + ").";
+    if (A.firstSnap && A.lastSnap) {
+      ov += " Перший стан касет у трасі — " + fmtDateTime(A.firstSnap.time) +
+        ", останній — " + fmtDateTime(A.lastSnap.time) + ".";
+    }
+    if (A.refills.length) {
+      ov += " Виявлено моментів поповнення чи заміни касет: " + A.refills.length + " (" +
+        A.refills.map(fmtDateTime).join(", ") + ") — баланс касет зводиться окремо для кожного проміжку між ними.";
+    } else {
+      ov += " Моментів поповнення касет у межах файлів не виявлено — баланс зводиться за весь період.";
+    }
+    if (A.info.CNG_FRM_RELEASE) ov += " Прошивка модуля: " + esc(A.info.CNG_FRM_RELEASE) + ".";
+    if (A.info.PS_RELEASE) ov += " Драйвер: " + esc(A.info.PS_RELEASE) + ".";
+    if (A.info.CNG_TRACE_DYF) ov += " Самодіагностика: " + esc(A.info.CNG_TRACE_DYF) + ".";
+    els.traceOverview.innerHTML = ov;
+    els.traceOverview.style.display = "block";
+
+    var tiles = [
+      ["Видач за трасою", A.counts.dispense],
+      ["Сума видач", fmtUAH(A.totalAmount)],
+      ["Купюр видано", A.totalNotes],
+      ["Подач клієнту (PRESENT)", A.counts.present],
+      ["Ретрактів", A.counts.retract],
+      ["Команд реджекту", A.counts.reject],
+      ["Тестових видач", A.counts.test],
+      ["Збійних видач", A.counts.failed],
+      ["Забраковано купюр", A.rejectedNotes],
+      ["Скидань пристрою", A.counts.reset]
+    ];
+    els.traceStatsBar.innerHTML = tiles.map(function (t) {
+      return '<div class="stat"><div class="k">' + esc(t[0]) + '</div><div class="v">' + esc(t[1]) + "</div></div>";
+    }).join("");
+    els.traceStatsWrap.style.display = "block";
+
+    // ---- баланс касет ----
+    var html = '<div class="section-head" style="margin-top:22px;"><h4>Баланс касет за трасою</h4></div>' +
+      '<p class="recon-lead">ACT — залишок купюр у касеті за лічильником пристрою. У межах проміжку без поповнень він має спадати рівно на кількість виданих купюр. Різниця «вибуло понад видане» — це купюри, які покинули касету, але не пішли клієнту: шукайте їх у касеті реджекту чи ретракту, у тракті або серед відбракованих.</p>';
+    A.segments.forEach(function (seg, i) {
+      html += '<p class="recon-lead" style="margin-top:14px;"><strong>Проміжок ' + (i + 1) + ": " +
+        esc(fmtDateTime(seg.from.time)) + " – " + esc(fmtDateTime(seg.to.time)) + "</strong></p>";
+      html += '<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:13px; margin:8px 0 4px;">' +
+        '<tr style="text-align:left; color:var(--muted);">' +
+        ["Касета", "Номінал", "ACT на початку", "ACT у кінці", "Видано купюр", "Сума видачі", "Вибуло понад видане"]
+          .map(function (h) { return '<th style="padding:6px 10px; border-bottom:1px solid var(--line); font-weight:500;">' + h + "</th>"; }).join("") +
+        "</tr>";
+      seg.rows.forEach(function (r) {
+        var gapTxt = r.gap === null ? "—"
+          : (r.gap === 0 ? "0" : r.gap + " шт. = " + fmtUAH(r.gapAmount));
+        html += '<tr><td style="padding:6px 10px; border-bottom:1px solid var(--line);">№' + r.no + "</td>" +
+          '<td style="padding:6px 10px; border-bottom:1px solid var(--line);">' + r.value + " " + esc(r.currency || "") + "</td>" +
+          '<td style="padding:6px 10px; border-bottom:1px solid var(--line);">' + (isNaN(r.startAct) ? "—" : r.startAct) + "</td>" +
+          '<td style="padding:6px 10px; border-bottom:1px solid var(--line);">' + (isNaN(r.endAct) ? "—" : r.endAct) + "</td>" +
+          '<td style="padding:6px 10px; border-bottom:1px solid var(--line);">' + r.notes + (r.testNotes ? " (з них тестових " + r.testNotes + ")" : "") + "</td>" +
+          '<td style="padding:6px 10px; border-bottom:1px solid var(--line);">' + esc(fmtUAH(r.amount)) + "</td>" +
+          '<td style="padding:6px 10px; border-bottom:1px solid var(--line); ' + (r.gap ? "color:var(--bad); font-weight:600;" : "") + '">' + esc(gapTxt) + "</td></tr>";
+      });
+      html += "</table></div>";
+      html += '<p class="recon-lead">Разом за проміжок: видано ' + esc(fmtUAH(seg.amount)) +
+        (seg.gapNotes ? "; вибуло понад видане " + seg.gapNotes + " купюр на " + esc(fmtUAH(seg.gapAmount)) + " — це і є сума, яку треба пояснити."
+                      : "; лічильники касет сходяться з виданим повністю.") +
+        " Для звірки: лічильник касети реджекту за проміжок " +
+        (seg.rejectBoxDelta > 0 ? "зріс на " + seg.rejectBoxDelta + " купюр" : seg.rejectBoxDelta < 0 ? "обнулено чи зменшено на " + Math.abs(seg.rejectBoxDelta) : "не змінився") +
+        ", лічильник ретракту " +
+        (seg.retractBoxDelta > 0 ? "зріс на " + seg.retractBoxDelta : seg.retractBoxDelta < 0 ? "зменшено на " + Math.abs(seg.retractBoxDelta) : "не змінився") +
+        ". Купюри, що вибули понад видане, мають знайтись саме в цих касетах або в тракті.</p>";
+    });
+    if (!A.segments.length) html += '<p class="recon-lead">Станів касет у трасі недостатньо, щоб звести баланс.</p>';
+    els.traceBalance.innerHTML = html;
+
+    // ---- епізоди з ретрактом ----
+    if (A.episodes.length) {
+      var eh = '<div class="section-head" style="margin-top:22px;"><h4>Епізоди з ретрактом <span style="color:var(--muted); font-weight:400;">(' + A.episodes.length + ")</span></h4></div>" +
+        '<p class="recon-lead">Купюри виходили з касет і подавались клієнту, але були втягнуті назад у банкомат.</p><div class="findings">';
+      A.episodes.forEach(function (e) {
+        var comp = e.dispense
+          ? e.dispense.items.map(function (it) { return "касета " + it.no + " — " + it.notes + " шт. × " + it.value; }).join(", ") +
+            ". Сума: " + fmtUAH(e.dispense.amount) + "."
+          : "Команду видачі перед ретрактом у файлі не знайдено.";
+        eh += '<div class="finding sev-critical"><div class="stripe"></div><div class="finding-body">' +
+          '<div class="finding-top"><span class="sev-badge">' + SEV_LABEL.critical + '</span><span class="finding-time">' +
+          esc(fmtDateTime(e.retracts[0].time)) + "</span></div><h5>Ретракт після видачі</h5><p>" +
+          (e.dispense ? "Видача о " + esc(fmtDateTime(e.dispense.time)) + ": " : "") + esc(comp) +
+          (e.present ? " Подача клієнту о " + esc(fmtDateTime(e.present.time)) + "." : "") +
+          " Ретракт" + (e.retracts.length > 1 ? "и (" + e.retracts.length + ")" : "") + " о " +
+          esc(e.retracts.map(function (r) { return fmtDateTime(r.time); }).join(", ")) +
+          ". Файл: " + esc(e.sourceFile) + ".</p></div></div>";
+      });
+      els.traceEpisodes.innerHTML = eh + "</div>";
+    } else {
+      els.traceEpisodes.innerHTML = '<p class="recon-lead" style="margin-top:18px;">Команд ретракту у завантажених файлах не зафіксовано.</p>';
+    }
+
+    els.traceEventsBlock.innerHTML = renderCauseEvents(A.events, null);
+    els.traceExportRow.style.display = "flex";
+  }
+
+  function buildTraceConclusion() {
+    var A = traceState.result;
+    if (!A) return;
+    var dts = Object.keys(A.dates).sort();
+    var P = [];
+    P.push(docPara("Заключення за логами трасування диспенсера", { bold: true, size: 28, after: 160 }));
+    P.push(docPara("Файлів трасування: " + A.files + ". Дати: " + dts.join(", ") + ".", { after: 60 }));
+    if (A.info.CNG_FRM_RELEASE) P.push(docPara("Прошивка модуля: " + A.info.CNG_FRM_RELEASE, { size: 20, after: 40 }));
+    if (A.info.PS_RELEASE) P.push(docPara("Драйвер: " + A.info.PS_RELEASE, { size: 20, after: 40 }));
+    if (A.info.CNG_TRACE_DYF) P.push(docPara("Самодіагностика: " + A.info.CNG_TRACE_DYF, { size: 20, after: 160 }));
+
+    P.push(docPara("Підсумок за трасою", { bold: true, size: 24 }));
+    P.push(docPara("Видач: " + A.counts.dispense + " на " + fmtUAH(A.totalAmount) + " (" + A.totalNotes + " купюр).\n" +
+      "Подач клієнту: " + A.counts.present + ". Ретрактів: " + A.counts.retract + ". Команд реджекту: " + A.counts.reject + ".\n" +
+      "Тестових видач: " + A.counts.test + " на " + fmtUAH(A.testAmount) + ". Збійних видач: " + A.counts.failed +
+      ". Забраковано купюр: " + A.rejectedNotes + ". Скидань пристрою: " + A.counts.reset + ".", { after: 200 }));
+
+    P.push(docPara("Баланс касет", { bold: true, size: 24 }));
+    if (A.refills.length) {
+      P.push(docPara("Моменти поповнення чи заміни касет: " + A.refills.map(fmtDateTime).join(", ") +
+        ". Баланс зводиться окремо в межах кожного проміжку між ними.", { size: 20, italic: true, after: 80 }));
+    }
+    A.segments.forEach(function (seg, i) {
+      P.push(docPara("Проміжок " + (i + 1) + ": " + fmtDateTime(seg.from.time) + " – " + fmtDateTime(seg.to.time), { bold: true, after: 60 }));
+      var t = "";
+      seg.rows.forEach(function (r) {
+        t += (t ? "\n" : "") + "касета " + r.no + " (" + r.value + " " + (r.currency || "") + "): ACT " +
+          (isNaN(r.startAct) ? "—" : r.startAct) + " -> " + (isNaN(r.endAct) ? "—" : r.endAct) +
+          ", видано " + r.notes + " купюр на " + fmtUAH(r.amount) +
+          (r.gap === null ? "" : ", вибуло понад видане " + r.gap + " шт." + (r.gap ? " = " + fmtUAH(r.gapAmount) : ""));
+      });
+      P.push(docPara(t, { mono: true, size: 18, after: 60 }));
+      P.push(docPara((seg.gapNotes
+        ? "Разом за проміжок вибуло понад видане " + seg.gapNotes + " купюр на " + fmtUAH(seg.gapAmount) + "."
+        : "Лічильники касет за проміжок сходяться з виданим повністю.") +
+        " Лічильник касети реджекту за проміжок змінився на " + (seg.rejectBoxDelta >= 0 ? "+" : "") + seg.rejectBoxDelta +
+        " купюр, лічильник ретракту — на " + (seg.retractBoxDelta >= 0 ? "+" : "") + seg.retractBoxDelta + ".", { after: 160 }));
+    });
+
+    P.push(docPara("Епізоди з ретрактом", { bold: true, size: 24 }));
+    if (!A.episodes.length) {
+      P.push(docPara("Команд ретракту не зафіксовано.", { after: 200 }));
+    } else {
+      A.episodes.forEach(function (e, i) {
+        P.push(docPara((i + 1) + ". Ретракт " + fmtDateTime(e.retracts[0].time), { bold: true, after: 60 }));
+        var raw = "";
+        if (e.dispense) {
+          raw += '<COMMAND date="' + e.dispense.dateStr + '" time="' + e.dispense.timeStr + '" type="DISPENSE">';
+          if (e.dispense.payload) raw += '\n<ENTRY type="CNG_DISP_STANDARD">' + e.dispense.payload + "</ENTRY>";
+        }
+        if (e.present) raw += '\n<COMMAND date="' + e.present.dateStr + '" time="' + e.present.timeStr + '" type="PRESENT">';
+        e.retracts.forEach(function (r) { raw += '\n<COMMAND date="' + r.dateStr + '" time="' + r.timeStr + '" type="RETRACT">'; });
+        P.push(docPara(raw, { mono: true, size: 18, after: 60 }));
+        if (e.dispense) {
+          P.push(docPara("Склад видачі: " + e.dispense.items.map(function (it) {
+            return "касета " + it.no + " — " + it.notes + " шт. × " + it.value;
+          }).join(", ") + ". Сума: " + fmtUAH(e.dispense.amount) + ".", { after: 160 }));
+        }
+      });
+    }
+
+    var errs = A.events.filter(function (e) { return e.sev !== "info"; })
+      .sort(function (a, b) { return a.time - b.time; });
+    P.push(docPara("Помилки та збої диспенсера", { bold: true, size: 24 }));
+    if (!errs.length) P.push(docPara("Помилок не зафіксовано.", { after: 200 }));
+    else errs.forEach(function (e) {
+      P.push(docPara("• " + riskEventLabel(e), { bold: true, after: 40 }));
+      P.push(docPara(riskEventDetail(e), { size: 20, after: 100 }));
+    });
+
+    P.push(docPara("Висновок", { bold: true, size: 24 }));
+    var c = [];
+    var gapTotal = A.segments.reduce(function (a, s) { return a + s.gapAmount; }, 0);
+    var gapNotes = A.segments.reduce(function (a, s) { return a + s.gapNotes; }, 0);
+    if (gapNotes) c.push("За лічильниками касет вибуло понад видане клієнтам " + gapNotes + " купюр на " + fmtUAH(gapTotal) + " — перевірте касету реджекту, касету ретракту й тракт диспенсера.");
+    else c.push("Лічильники касет сходяться з обсягом виданого — за трасою готівка з касет не зникала.");
+    if (A.counts.retract) c.push(A.counts.retract + " ретракт(ів): купюри подавались клієнту й були втягнуті назад, фізично лишившись у банкоматі.");
+    if (A.counts.test) c.push(A.counts.test + " тестова(их) видача(і) на " + fmtUAH(A.testAmount) + " — готівка виходила з касет у сервісному режимі, без операцій у процесингу.");
+    if (A.rejectedNotes) c.push("Відбраковано " + A.rejectedNotes + " купюр — вони мають бути в касеті реджекту.");
+    if (A.counts.failed) c.push(A.counts.failed + " видач(і) диспенсер позначив як збійні.");
+    c.forEach(function (x) { P.push(docPara("— " + x, { after: 80 })); });
+    P.push(docPara("Остаточне рішення прохання приймати з урахуванням матеріалів фото- та відеофіксації.", { italic: true, after: 200 }));
+    P.push(docPara("Документ сформовано автоматично за файлами трасування диспенсера. Наведені фрагменти — цитати з вихідних файлів.", { size: 18, italic: true }));
+
+    buildDocx(P, "Заключення_трасування_" + dts.join("_") + ".docx");
+  }
+
+  function setTraceFiles(fileList) {
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    traceState.files = files;
+    els.traceStatus.textContent = files.length === 1 ? files[0].name : files.length + " файлів обрано";
+    els.traceDropzone.classList.add("filled");
+    els.traceRunBtn.disabled = false;
+  }
+  els.traceDropzone.addEventListener("click", function () { els.traceInput.click(); });
+  els.traceDropzone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.traceInput.click(); }
+  });
+  els.traceDropzone.addEventListener("dragover", function (e) { e.preventDefault(); els.traceDropzone.classList.add("drag"); });
+  els.traceDropzone.addEventListener("dragleave", function () { els.traceDropzone.classList.remove("drag"); });
+  els.traceDropzone.addEventListener("drop", function (e) {
+    e.preventDefault(); els.traceDropzone.classList.remove("drag");
+    setTraceFiles(e.dataTransfer.files);
+  });
+  els.traceInput.addEventListener("change", function () { setTraceFiles(els.traceInput.files); });
+  els.traceExportBtn.addEventListener("click", buildTraceConclusion);
+
+  els.traceRunBtn.addEventListener("click", function () {
+    els.traceErrBox.style.display = "none";
+    els.traceRunBtn.disabled = true;
+    els.traceRunBtn.textContent = "Аналізую…";
+    Promise.all(traceState.files.map(function (file) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function () {
+          try {
+            var text = decodeBytes(new Uint8Array(r.result)).text;
+            if (!isTraceText(text, file.name)) {
+              reject(new Error("файл «" + file.name + "» не схожий на лог трасування (у ньому немає структури CCDM Trace)"));
+              return;
+            }
+            resolve(parseTraceXml(text, file.name));
+          } catch (e) { reject(e); }
+        };
+        r.onerror = function () { reject(new Error("не вдалося прочитати " + file.name)); };
+        r.readAsArrayBuffer(file);
+      });
+    })).then(function (traces) {
+      var A = analyzeTraces(traces);
+      if (!A.snapshots.length && !A.dispenses.length) {
+        throw new Error("у завантажених файлах немає ні станів касет, ні команд видачі — перевірте, чи це файли трасування диспенсера");
+      }
+      traceState.result = A;
+      renderTraceAnalysis(A);
+    }).catch(function (e) {
+      els.traceErrBox.textContent = e.message || String(e);
+      els.traceErrBox.style.display = "block";
+      els.traceStatsWrap.style.display = "none";
+      els.traceOverview.style.display = "none";
+      els.traceBalance.innerHTML = "";
+      els.traceEpisodes.innerHTML = "";
+      els.traceEventsBlock.innerHTML = "";
+      els.traceExportRow.style.display = "none";
+      traceState.result = null;
+    }).then(function () {
+      els.traceRunBtn.disabled = false;
+      els.traceRunBtn.textContent = "Проаналізувати трасування";
+    });
+  });
+
+  els.reconCauseBtn.addEventListener("click", runCauseSearch);
+})();
+</script>
