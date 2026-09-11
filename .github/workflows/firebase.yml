@@ -1,9 +1,7 @@
 name: Deploy to Firebase Hosting
-# Автозапуск вимкнено, доки не додано секрет FIREBASE_SERVICE_ACCOUNT.
-# Після його додавання розкоментуйте блок push нижче.
 on:
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 jobs:
   deploy:
