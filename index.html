@@ -3042,6 +3042,27 @@
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
       "</Relationships>";
+    // Перевіряємо XML перед пакуванням: краще зрозуміла помилка,
+    // ніж файл, який Word відмовиться відкрити.
+    try {
+      var chk = new DOMParser().parseFromString(doc, "application/xml");
+      var perr = chk.getElementsByTagName("parsererror")[0];
+      if (perr) {
+        var bad = -1;
+        for (var pi = 0; pi < paras.length; pi++) {
+          var one = '<?xml version="1.0" encoding="UTF-8"?>' +
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+            paras[pi] + "</w:body></w:document>";
+          if (new DOMParser().parseFromString(one, "application/xml").getElementsByTagName("parsererror")[0]) { bad = pi; break; }
+        }
+        alert("Документ не сформовано: у тексті виявлено некоректний фрагмент" +
+              (bad >= 0 ? " (абзац №" + (bad + 1) + ")" : "") + ".\n\n" +
+              (perr.textContent || "").slice(0, 300) +
+              (bad >= 0 ? "\n\nПочаток абзацу: " + String(paras[bad]).slice(0, 200) : ""));
+        return;
+      }
+    } catch (e) { /* якщо DOMParser недоступний — пакуємо як є */ }
+
     var blob = zipStore([
       { name: "[Content_Types].xml", text: ct },
       { name: "_rels/.rels", text: rels },
