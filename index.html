@@ -1515,7 +1515,7 @@
     { key: "dispenseFail", re: /UNABLE\s+TO\s+DISPENSE|DISPENSE\s+(?:FAILED|ERROR)|NO\s+DISPENSE|CASH\s+DISPENSE\s+ERROR/, sev: "critical", cash: true,
       label: "Збій видачі готівки",
       detail: "Банкомат не зміг виконати команду видачі. Операція могла завершитись частковою видачею — звірте суму з журналом процесингу." },
-    { key: "jam", re: /\bJAM(?:MED|MING)?\b/, sev: "critical", cash: true,
+    { key: "jam", re: /^(?!.*\b(?:CARD|MCRW|RECEIPT|PRINTER|JOURNAL)\b).*\bJAM(?:MED|MING)?\b/, sev: "critical", cash: true,
       label: "Затор (jam) у тракті",
       detail: "Затор банкнот або носія. Купюри могли залишитись у тракті поза касетами — це типова причина фізичної розбіжності при перерахунку." },
     { key: "reject", re: /NOTES?\s+REJECTED|TOO\s+MANY\s+REJECTS|REJECT\s+CASSETTE\s+(?:FULL|ERROR)/, sev: "warning", cash: true,
