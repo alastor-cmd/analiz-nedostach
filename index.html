@@ -3005,7 +3005,11 @@
     return new Blob(parts.concat(central, [eocd]), { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
   }
   function xmlEsc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    // У логах трапляються керуючі символи (0x00-0x1F). В XML вони неприпустимі —
+    // Word відмовляється відкривати такий файл, тому прибираємо їх заздалегідь.
+    return String(s == null ? "" : s)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\uFFFE\uFFFF]/g, "")
+      .replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c];
     });
   }
