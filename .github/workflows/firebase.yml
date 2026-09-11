@@ -1,13 +1,21 @@
 name: Deploy to Firebase Hosting
+# Автозапуск вимкнено, доки не додано секрет FIREBASE_SERVICE_ACCOUNT.
+# Після його додавання розкоментуйте блок push нижче.
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Перевірка наявності ключа
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ]; then
+            echo "::error::Секрет FIREBASE_SERVICE_ACCOUNT не додано. Settings → Secrets and variables → Actions."
+            exit 1
+          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
