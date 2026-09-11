@@ -2466,18 +2466,28 @@
     els.reconStatsWrap.style.display = "block";
 
     // ---- shortage estimate ----
-    var shortageSum = trueHostOnly.reduce(function (a, h) { return a + h.amount; }, 0) +
+    // Операція є в журналі, але видачі в логах банкомата немає (або вона збійна,
+    // або клієнт готівку не забрав) — купюри лишились у банкоматі → НАДЛИШОК.
+    var excessSum = trueHostOnly.reduce(function (a, h) { return a + h.amount; }, 0) +
       matchResult.matchedFailed.reduce(function (a, m) { return a + m.host.amount; }, 0) +
       matchResult.unconfirmed.reduce(function (a, m) { return a + m.host.amount; }, 0);
-    var excessSum = matchResult.deviceOnly.reduce(function (a, d) { return a + d.amount; }, 0);
+    var excessCnt = trueHostOnly.length + matchResult.matchedFailed.length + matchResult.unconfirmed.length;
+    // Видача відбулась, але операції в журналі немає — готівка пішла без списання → НЕДОСТАЧА.
+    var shortageSum = matchResult.deviceOnly.reduce(function (a, d) { return a + d.amount; }, 0);
+    var shortageCnt = matchResult.deviceOnly.length;
+    if (reconState.timeMatch && reconState.timeMatch.noHost && reconState.timeMatch.noHost.length) {
+      shortageSum += reconState.timeMatch.noHost.reduce(function (a, d) { return a + d.amount; }, 0);
+      shortageCnt += reconState.timeMatch.noHost.length;
+    }
+    if (reconState.report) reconState.report.balance = {
+      shortage: shortageSum, shortageCnt: shortageCnt, excess: excessSum, excessCnt: excessCnt };
     var oldV = document.getElementById('reconVerdict'); if (oldV) oldV.remove();
     if (shortageSum > 0 || excessSum > 0) {
       var parts = [];
       if (shortageSum > 0) parts.push('<span class="amt-badge amt-short"><span class="cap">Недостача · ' +
-        (trueHostOnly.length + matchResult.matchedFailed.length + matchResult.unconfirmed.length) + ' опер.</span>' +
-        esc(fmtUAH(shortageSum)) + '</span>');
+        shortageCnt + ' опер.</span>' + esc(fmtUAH(shortageSum)) + '</span>');
       if (excessSum > 0) parts.push('<span class="amt-badge amt-exc"><span class="cap">Надлишок · ' +
-        matchResult.deviceOnly.length + ' опер.</span>' + esc(fmtUAH(excessSum)) + '</span>');
+        excessCnt + ' опер.</span>' + esc(fmtUAH(excessSum)) + '</span>');
       els.reconShortageAmt.innerHTML = parts.join("");
 
       // Чіткий висновок за трасою диспенсера
@@ -3042,6 +3052,22 @@
 
   // фрагмент журналу навколо вказаного часу: від найближчого попереднього
   // "-> TRANSACTION START" до наступного "<- TRANSACTION END"
+  // Рядок логу з помилкою разом із сусідніми — по одному до і після.
+  function errExcerpt(journals, ev) {
+    if (!ev || !ev.sample) return null;
+    var j = null;
+    journals.forEach(function (x) { if (!j && x.filename === ev.sourceFile) j = x; });
+    if (!j) journals.forEach(function (x) { if (!j && x.text.indexOf(ev.sample) !== -1) j = x; });
+    if (!j) return null;
+    var lines = j.text.split(/\r\n|\n/), idx = -1;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf(ev.sample) !== -1) { idx = i; break; }
+    }
+    if (idx < 0) return null;
+    return { file: j.filename,
+             text: lines.slice(Math.max(0, idx - 1), Math.min(lines.length, idx + 2)).join("\n") };
+  }
+
   function journalExcerpt(journals, when, dateStr) {
     var j = null;
     journals.forEach(function (x) { if (!j && x.baseDate === dateStr) j = x; });
@@ -3332,7 +3358,9 @@
     } else {
       errs.forEach(function (e) {
         P.push(docPara("• " + riskEventLabel(e), { bold: true, after: 30 }));
-        P.push(docPara(e.detail + " Джерело: " + e.sourceFile + ", «" + e.sample + "».", { size: 20, after: 80 }));
+        P.push(docPara(e.detail + " Джерело: " + e.sourceFile + ".", { size: 20, after: 40 }));
+        var exErr = errExcerpt(R.journals, e);
+        P.push(docPara(exErr ? exErr.text : ("«" + e.sample + "»"), { mono: true, size: 18, after: 80 }));
       });
     }
     if (unknown.length) {
@@ -3343,6 +3371,25 @@
 
     // ---------- 6. висновок ----------
     P.push(docPara("Висновок", { bold: true, size: 24 }));
+    var bal = R.balance || { shortage: 0, excess: 0, shortageCnt: 0, excessCnt: 0 };
+    var balTxt;
+    if (!bal.shortage && !bal.excess) {
+      balTxt = "За журналом операцій, логами банкомата та файлами трасування розбіжностей не виявлено: " +
+               "усі операції журналу підтверджені видачею, а всі видачі мають операцію в журналі.";
+    } else {
+      var pieces = [];
+      if (bal.excess) pieces.push("надлишок у розмірі " + fmtUAH(bal.excess) +
+        " (" + bal.excessCnt + " опер.) — операції списані в журналі, але готівка лишилась у банкоматі");
+      if (bal.shortage) pieces.push("недостача у розмірі " + fmtUAH(bal.shortage) +
+        " (" + bal.shortageCnt + " опер.) — готівка вийшла з касет без відповідної операції в журналі");
+      balTxt = "За логами банкомата та файлами трасування має бути " + pieces.join("; ") + ".";
+      if (bal.excess && bal.shortage) {
+        var net = bal.excess - bal.shortage;
+        balTxt += " Сальдо: " + (net > 0 ? "надлишок " : net < 0 ? "недостача " : "нуль ") +
+                  (net ? fmtUAH(Math.abs(net)) : "") + ".";
+      }
+    }
+    P.push(docPara(balTxt, { bold: true, after: 140 }));
     var c = [];
     if (eps.length) {
       var epSum = eps.reduce(function (a, e) { return a + (e.dispense ? e.dispense.amount : 0); }, 0);
@@ -3376,7 +3423,7 @@
     if (crit.length) c.push(crit.length + " критичн(их) розбіжност(ей) між журналом операцій і логами банкомата.");
     if (!c.length) c.push("Технічних причин розбіжності в завантажених логах не знайдено.");
     c.forEach(function (x) { P.push(docPara("— " + x, { after: 80 })); });
-    P.push(docPara("Остаточне рішення прохання приймати з урахуванням матеріалів фото- та відеофіксації.", { italic: true, after: 200 }));
+    P.push(docPara("Остаточне рішення: за фактом перерахунку та відеофіксації.", { bold: true, after: 200 }));
     P.push(docPara("Документ сформовано автоматично за журналом операцій, логами банкомата та файлами трасування диспенсера. Наведені фрагменти логів — цитати з вихідних файлів.",
       { size: 18, italic: true }));
 
