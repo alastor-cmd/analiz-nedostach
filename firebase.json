@@ -1,0 +1,7 @@
+{
+  "hosting": {
+    "site": "analiz-nedostach",
+    "public": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", ".github/**"]
+  }
+}
